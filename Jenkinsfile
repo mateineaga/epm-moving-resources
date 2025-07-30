@@ -1,12 +1,14 @@
 @Library('shared-library-matei-github') _
 
 pipeline {
-    agent {
-        docker {
-            image 'bitnami/kubectl:latest'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
-        }
-    }
+    // agent {
+    //     docker {
+    //         image 'bitnami/kubectl:latest'
+    //         args '-v /var/run/docker.sock:/var/run/docker.sock'
+    //     }
+    // }
+
+    agent any
 
     parameters {
         choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select source banner to change resources from', name: 'SOURCE_BANNER'
@@ -39,6 +41,16 @@ pipeline {
                 echo "Is release?: ${IS_RELEASE}"
                 echo "Source NS: ${SOURCE_NAMESPACE}"
                 echo "Target NS: ${TARGET_NAMESPACE}"
+            }
+        }
+
+        stage('Install kubectl') {
+            steps {
+                sh '''
+                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                    chmod +x kubectl
+                    mv kubectl /usr/local/bin/
+                '''
             }
         }
 

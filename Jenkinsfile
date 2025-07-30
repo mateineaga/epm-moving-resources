@@ -1,7 +1,12 @@
 @Library('shared-library-matei-github') _
 
 pipeline {
-    agent any 
+    agent {
+        docker {
+            image 'bitnami/kubectl:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     parameters {
         choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select source banner to change resources from', name: 'SOURCE_BANNER'
@@ -42,7 +47,6 @@ pipeline {
                 withKubeConfig([credentialsId: 'kubeconfig-local-cluster']) {
                     sh 'kubectl get pods'
                     sh 'kubectl get nodes'
-                    // Poți adăuga mai multe comenzi kubectl aici
                 }
             }
         }

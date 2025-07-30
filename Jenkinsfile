@@ -80,10 +80,8 @@ pipeline {
 
         stage('Getting k8s environment'){
             steps{
-                withKubeConfig([credentialsId: 'kubeconfig-local-cluster']) {
-                    sh 'kubectl get pods'
-                    sh 'kubectl get nodes'
-                }
+                sh 'kubectl get pods'
+                sh 'kubectl get nodes'
             }
         }
     }

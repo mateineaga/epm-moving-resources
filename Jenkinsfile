@@ -39,10 +39,10 @@ pipeline {
 
         stage('Getting k8s environment'){
             steps{
-                script{
+                withKubeConfig([credentialsId: 'kubeconfig-local-cluster']) {
                     sh 'kubectl get pods'
-                    sh 'kubectl get services'
-                    sh 'kubectl get deployments'
+                    sh 'kubectl get nodes'
+                    // Poți adăuga mai multe comenzi kubectl aici
                 }
             }
         }

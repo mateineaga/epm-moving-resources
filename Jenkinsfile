@@ -13,7 +13,8 @@ pipeline {
     stages{
         stage ('Checkout source') {
             steps {
-                git url: 'https://github.com/mateineaga/epm-moving-resources.git',
+                git branch: 'main',
+                    url: 'https://github.com/mateineaga/epm-moving-resources.git',
                     credentialsId: 'GithubCredentials'
                 // helloWorld()
             }

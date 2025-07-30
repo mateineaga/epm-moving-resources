@@ -1,14 +1,38 @@
 @Library('shared-library-matei-github') _
 
 pipeline {
-    // agent {
-    //     docker {
-    //         image 'bitnami/kubectl:latest'
-    //         args '-v /var/run/docker.sock:/var/run/docker.sock'
-    //     }
-    // }
+    agent {
+        kubernetes {
+            yaml '''
+            apiVersion: v1
+            kind: Pod
+            metadata:
+              labels:
+                jenkins: agent
+            spec:
+              containers:
+                - name: omnibus
+                  image: bitnami/kubectl:latest
+                  command:
+                  - cat
+                  tty: true
+                  resources:
+                    requests:
+                      memory: "512Mi"
+                      cpu: "500m"
+                    limits:
+                      memory: "1Gi"
+                      cpu: "1"
+                  securityContext:
+                    runAsUser: 1000
+                    allowPrivilegeEscalation: false
+              serviceAccountName: jenkins
+            '''
+            defaultContainer 'omnibus'
+            namespace 'jenkins'
+        }
+    }
 
-    agent any
 
     parameters {
         choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select source banner to change resources from', name: 'SOURCE_BANNER'

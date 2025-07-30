@@ -1,4 +1,4 @@
-@Library('shared-library-matei-github')
+@Library('shared-library-matei-github') _
 
 pipeline {
     agent any 
@@ -13,7 +13,7 @@ pipeline {
     stages{
         stage ('Checkout source') {
             steps {
-                git url: 'https://github.com/mateineaga/epm-moving-resources.git'
+                git url: 'https://github.com/mateineaga/epm-moving-resources.git',
                     credentialsId: 'GithubCredentials'
                 // helloWorld()
             }

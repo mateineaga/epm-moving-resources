@@ -1,5 +1,6 @@
 @Library('shared-library-matei-github')
 
+
 pipeline {
     agent any 
 
@@ -25,7 +26,7 @@ pipeline {
             echo "Target banner is: ${TARGET_BANNER}"
             echo "Service banner is: ${SERVICE_NAME}"
             echo "Is release?: ${IS_RELEASE}"
-        }`
+        }
     }
 
 }

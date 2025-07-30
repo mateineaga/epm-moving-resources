@@ -1,6 +1,6 @@
 @Library('shared-library-matei-github')
 
-pipeline{
+pipeline {
     agent any 
 
     parameters {

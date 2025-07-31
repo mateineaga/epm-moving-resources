@@ -12,7 +12,7 @@ pipeline {
             spec:
               containers:
                 - name: kubectl
-                  image: bitnami/kubectl:latest
+                  image: ubuntu:20.04
                   command:
                   - cat
                   tty: true
@@ -35,9 +35,20 @@ pipeline {
     environment {
         SOURCE_NAMESPACE = "${SOURCE_BANNER}-${ENV}-space"
         TARGET_NAMESPACE = "${TARGET_BANNER}-${ENV}-space"
+        RELEASE_VERSION = sh(script: 'kubectl get dr -n ab-dev1-space asm-graphql-svc -o=jsonpath="{.spec.subsets[?(@.name=='release')].labels.app\.kubernetes\.io/version}" | sed 's/\./-/g'', returnStdout: true) 
     }
 
     stages{
+        stage('Install some tools') {
+            steps {
+                sh '''
+                apt-get update
+                apt-get install -y jq
+                snap install kubectl --classic
+                '''
+            }
+        }
+
         stage ('Checkout source') {
             steps {
                 git branch: 'main',

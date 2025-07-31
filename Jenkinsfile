@@ -85,7 +85,7 @@ pipeline {
             steps{
                 script{
                     env.JSON_RESPONSE = sh( 
-                        script: '''
+                        script: '''#!/bin/bash
                         kubectl get deployment -n ${SOURCE_NAMESPACE} ${SERVICE_NAME} -o=json | 
                         jq '{
                             "spec": {
@@ -128,14 +128,14 @@ pipeline {
                             echo "Debug - Service Name: ${env.SERVICE_NAME}"
                             
                             env.DEPLOYMENTS = sh(
-                                script: '''
+                                script: '''#!/bin/bash
                                 kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()
 
                             env.FILTERED_DEPLOYMENTS = sh(
-                                script: '''
+                                script: '''#!/bin/bash
                                 for deployment in $(echo "${DEPLOYMENTS}"); do
                                     if [[ "$deployment" == *"${RELEASE_VERSION}"* ]]; then
                                         echo "$deployment"
@@ -154,14 +154,14 @@ pipeline {
                     steps {
                         script {
                             env.HPA = sh(
-                                script: '''
+                                script: '''#!/bin/bash
                                 kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()
 
                             env.FILTERED_HPA = sh(
-                                script: '''
+                                script: '''#!/bin/bash
                                 for hpa in $(echo "${HPA}"); do
                                     if [[ "$hpa" == *"${SERVICE_NAME}"* ]]; then
                                         echo "$hpa"
@@ -185,7 +185,7 @@ pipeline {
             steps {
                 script {
                     echo "=== RESOURCES BEFORE PATCH ==="
-                    sh '''
+                    sh '''#!/bin/bash
                     for deployment in ${FILTERED_DEPLOYMENTS}; do
                         echo "\\n=== Checking resources for deployment: $deployment ==="
                         kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
@@ -202,14 +202,14 @@ pipeline {
             steps{
                 script{
                     echo "Allocating more resources to deployments"
-                    sh '''
+                    sh '''#!/bin/bash
                     for deployment in ${FILTERED_DEPLOYMENTS}; do
                         kubectl patch deployment $deployment -n ${TARGET_NAMESPACE} --patch "${JSON_RESPONSE}"
                     done
                     '''
 
                     echo "Changing HPA associated"
-                    sh '''
+                    sh '''#!/bin/bash
                     for hpa in ${HPA}; do
                         kubectl get hpa $hpa -n ${TARGET_NAMESPACE}
                     done
@@ -225,7 +225,7 @@ pipeline {
             steps {
                 script {
                     echo "=== RESOURCES AFTER PATCH ==="
-                    sh '''
+                    sh '''#!/bin/bash
                     for deployment in ${FILTERED_DEPLOYMENTS}; do
                         echo "\\n=== Checking resources for deployment: $deployment ==="
                         kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'

@@ -86,7 +86,7 @@ pipeline {
                 script{
                     env.JSON_RESPONSE = sh( 
                         script: '''#!/bin/bash
-                        kubectl get deployment -n ${SOURCE_NAMESPACE} ${SERVICE_NAME} -o=json | 
+                        kubectl get deployment -n ${SOURCE_NAMESPACE} ${SERVICE_NAME}-${RELEASE_VERSION} -o=json | 
                         jq '{
                             "spec": {
                                 "template": {
@@ -150,7 +150,7 @@ pipeline {
                     }
                 }
 
-                stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}') {
+                stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
                     steps {
                         script {
                             env.HPA = sh(

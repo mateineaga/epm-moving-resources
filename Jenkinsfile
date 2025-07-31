@@ -26,7 +26,7 @@ pipeline {
 
     parameters {
         choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select source banner to change resources from', name: 'SOURCE_BANNER'
-        choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select target banner to change resources to', name: 'TARGET_BANNER'
+        choice choices: ['dll', 'ab', 'mi', 'ms', 'alb'], description: 'Select target banner to change resources to', name: 'TARGET_BANNER'
         choice choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3'], description: 'Select environment', name: 'ENV'
         choice choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'], description: 'Select the name of the service in which you want to modify resources', name: 'SERVICE_NAME'
         choice choices: ['true', 'false'], description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"', name: 'IS_RELEASE'
@@ -35,7 +35,6 @@ pipeline {
     environment {
         SOURCE_NAMESPACE = "${SOURCE_BANNER}-${ENV}-space"
         TARGET_NAMESPACE = "${TARGET_BANNER}-${ENV}-space"
-        
     }
 
     stages{
@@ -43,8 +42,9 @@ pipeline {
             steps {
                 sh '''
                 apt-get update
-                apt-get install -y jq
-                snap install kubectl --classic
+                apt-get install -y jq curl
+                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+                install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
                 '''
             }
         }
@@ -64,45 +64,153 @@ pipeline {
                 echo "Target banner is: ${TARGET_BANNER}"
                 echo "Service banner is: ${SERVICE_NAME}"
                 echo "Is release?: ${IS_RELEASE}"
-                echo "Source NS: ${SOURCE_NAMESPACE}"
-                echo "Target NS: ${TARGET_NAMESPACE}"
+                echo "Source NS: ${env.SOURCE_NAMESPACE}"
+                echo "Target NS: ${env.TARGET_NAMESPACE}"
             }
         }
 
-        stage('Getting k8s environment'){
+        stage('Get Release Version') {
+            steps {
+                script {
+                    env.RELEASE_VERSION = sh(
+                        script: '''kubectl get dr -n ${SOURCE_NAMESPACE} ${SERVICE_NAME} -o=jsonpath="{.spec.subsets[?(@.name=='release')].labels.app\\.kubernetes\\.io/version}" | sed 's/\\./\\-/g' ''',
+                        returnStdout: true
+                    ).trim()
+                    echo "Version of release is ${RELEASE_VERSION}!"
+                }
+            }
+        }
+
+        stage('Generating patch update in JSON form'){
             steps{
-                sh '''
-                kubectl get deployment -n default nginx-source -o=json | 
-                    jq '{
-                    "spec": {
-                        "template": {
+                script{
+                    env.JSON_RESPONSE = sh( 
+                        script: '''
+                        kubectl get deployment -n ${SOURCE_NAMESPACE} ${SERVICE_NAME} -o=json | 
+                        jq '{
                             "spec": {
-                                "containers": [{
-                                    "image": .spec.template.spec.containers[0].image,
-                                    "name": .spec.template.spec.containers[0].name,
-                                    "resources": {   
-                                            "limits": {
-                                                "cpu": .spec.template.spec.containers[0].resources.limits.cpu,
-                                                "ephemeral-storage": .spec.template.spec.containers[0].resources.limits["ephemeral-storage"],
-                                                "memory": .spec.template.spec.containers[0].resources.limits.memory
-                                            },
-                                            "requests": {
-                                                "cpu": .spec.template.spec.containers[0].resources.requests.cpu,
-                                                "ephemeral-storage": .spec.template.spec.containers[0].resources.requests["ephemeral-storage"],
-                                                "memory": .spec.template.spec.containers[0].resources.requests.memory
-                                            }
+                                "template": {
+                                    "spec": {
+                                        "containers": [{
+                                            "image": .spec.template.spec.containers[0].image,
+                                            "name": .spec.template.spec.containers[0].name,
+                                            "resources": {   
+                                                    "limits": {
+                                                        "cpu": .spec.template.spec.containers[0].resources.limits.cpu,
+                                                        "ephemeral-storage": .spec.template.spec.containers[0].resources.limits["ephemeral-storage"],
+                                                        "memory": .spec.template.spec.containers[0].resources.limits.memory
+                                                    },
+                                                    "requests": {
+                                                        "cpu": .spec.template.spec.containers[0].resources.requests.cpu,
+                                                        "ephemeral-storage": .spec.template.spec.containers[0].resources.requests["ephemeral-storage"],
+                                                        "memory": .spec.template.spec.containers[0].resources.requests.memory
+                                                    }
+                                                }
+                                            }]
                                         }
-                                    }]
+                                    }
                                 }
-                            }
+                            }'
+                        '''
+                        returnStdout: true
+                    ).trim()
+                }
+                echo "JSON RESPONSE ${env.JSON_RESPONSE}"
+            }
+        }
+
+        stage('Get all the deployments and HPA from ${env.SOURCE_NAMESPACE} containing ${env.RELEASE_VERSION}, and associated with {SERVICE_NAME}'){
+            parallel(){
+                stage('Identifying deployments containing ${env.RELEASE_VERSION}'){
+                    steps{
+                        script{
+                            env.DEPLOYMENTS=sh( 
+                                script: '''
+                                kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}
+                                '''
+                            )
+
+                            // Filtrează deployment-urile care conțin versiunea
+                            env.FILTERED_DEPLOYMENTS = sh(
+                                script: '''
+                                echo "The deployments containing release version ${RELEASE_VERSION} are:"
+                                for deployment in ${DEPLOYMENTS}; do
+                                    if [[ $deployment == *"${RELEASE_VERSION}"* ]]; then
+                                        echo "$deployment"
+                                    fi
+                                done
+                                ''',
+                                returnStdout: true
+                            ).trim()
+
+                            // Afișează rezultatul
+                            echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
                         }
-                    }'
-                '''
+                    }
+                }
+
+                stage('Identifying HPA associated with {SERVICE_NAME}'){
+                    steps{
+                        script{
+                            env.HPA=sh( 
+                                script: '''
+                                kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}"
+                                '''
+                            )
+
+                            // Filtrează deployment-urile care conțin versiunea
+                            env.FILTERED_HPA = sh(
+                                script: '''
+                                echo "The HPA containing service ${SERVICE_NAME} are:"
+                                for hpa in ${HPA}; do
+                                    if [[ $hpa == *"${SERVICE_NAME}"* ]]; then
+                                        echo "$hpa"
+                                    fi
+                                done
+                                ''',
+                                returnStdout: true
+                            ).trim()
+
+                            // Afișează rezultatul
+                            echo "Filtered HPA are: ${env.FILTERED_HPA}"
+                        }
+                    }
+                }
+            }
+            
+        }
+
+        stage('Promoting the candidate (adding resources to ${env.TARGET_NAMESPACE})'){
+            when {
+                        expression { env.IS_RELEASE == 'true' }
+            }
+            steps{
+                script{
+                    echo "Allocating more resources to deployments"
+                    sh '''
+                    for deployment in ${FILTERED_DEPLOYMENTS}; do
+                        kubectl patch deployment $deployment -n ${TARGET_NAMESPACE} --patch "${JSON_RESPONSE}"
+                    done
+                    '''
+
+                    echo "Changing HPA associated"
+                    sh '''
+                    for hpa in ${HPA}; do
+                        kubectl get hpa $hpa -n ${TARGET_NAMESPACE}
+                    done
+                    '''
+                }
             }
         }
     }
 
     post {
+        success {
+            echo "Successfully completed pipeline"
+        }
+        failure {
+            echo "Pipeline failed"
+        }
         always {
             cleanWs deleteDirs: true
         }

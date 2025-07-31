@@ -119,16 +119,19 @@ pipeline {
             }
         }
 
-        stage('Get all the deployments and HPA from ${env.SOURCE_NAMESPACE} containing ${env.RELEASE_VERSION}, and associated with {SERVICE_NAME}'){
+        stage('Get all the deployments and HPA from ${SOURCE_NAMESPACE} containing ${RELEASE_VERSION}, and associated with ${SERVICE_NAME}'){
             parallel(){
-                stage('Identifying deployments containing ${env.RELEASE_VERSION}'){
+                stage('Identifying deployments containing ${RELEASE_VERSION}'){
                     steps{
                         script{
+                            echo "Debug - Release Version: ${env.RELEASE_VERSION}"
+                            echo "Debug - Service Name: ${env.SERVICE_NAME}"
                             env.DEPLOYMENTS=sh( 
                                 script: '''
                                 kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}
-                                '''
-                            )
+                                ''',
+                                returnStdout: true
+                            ).trim()
 
                             // Filtrează deployment-urile care conțin versiunea
                             env.FILTERED_DEPLOYMENTS = sh(
@@ -149,7 +152,7 @@ pipeline {
                     }
                 }
 
-                stage('Identifying HPA associated with {SERVICE_NAME}'){
+                stage('Identifying HPA associated with ${SERVICE_NAME}'){
                     steps{
                         script{
                             env.HPA=sh( 

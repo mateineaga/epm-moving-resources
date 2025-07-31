@@ -119,7 +119,7 @@ pipeline {
             }
         }
 
-        stage('Get all the deployments and HPA from ${SOURCE_NAMESPACE}') {
+        stage('Get all the deployments and HPA from ${TARGET_NAMESPACE}') {
             parallel {
                 stage('Identifying deployments containing ${RELEASE_VERSION}') {
                     steps {
@@ -129,7 +129,7 @@ pipeline {
                             
                             env.DEPLOYMENTS = sh(
                                 script: '''#!/bin/bash
-                                kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
+                                kubectl get deployments -n ${TARGET_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()
@@ -150,12 +150,12 @@ pipeline {
                     }
                 }
 
-                stage('Identifying HPA associated with ${SERVICE_NAME}') {
+                stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}') {
                     steps {
                         script {
                             env.HPA = sh(
                                 script: '''#!/bin/bash
-                                kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
+                                kubectl get hpa -n ${TARGET_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()

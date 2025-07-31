@@ -119,26 +119,25 @@ pipeline {
             }
         }
 
-        stage('Get all the deployments and HPA from ${SOURCE_NAMESPACE} containing ${RELEASE_VERSION}, and associated with ${SERVICE_NAME}'){
-            parallel(){
-                stage('Identifying deployments containing ${RELEASE_VERSION}'){
-                    steps{
-                        script{
+        stage("Get all the deployments and HPA from ${SOURCE_NAMESPACE}") {
+            parallel {
+                stage("Identifying deployments containing ${RELEASE_VERSION}") {
+                    steps {
+                        script {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
                             echo "Debug - Service Name: ${env.SERVICE_NAME}"
-                            env.DEPLOYMENTS=sh( 
+                            
+                            env.DEPLOYMENTS = sh(
                                 script: '''
-                                kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}
+                                kubectl get deployments -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()
 
-                            // Filtrează deployment-urile care conțin versiunea
                             env.FILTERED_DEPLOYMENTS = sh(
                                 script: '''
-                                echo "The deployments containing release version ${RELEASE_VERSION} are:"
-                                for deployment in ${DEPLOYMENTS}; do
-                                    if [[ $deployment == *"${RELEASE_VERSION}"* ]]; then
+                                for deployment in $(echo "${DEPLOYMENTS}"); do
+                                    if [[ "$deployment" == *"${RELEASE_VERSION}"* ]]; then
                                         echo "$deployment"
                                     fi
                                 done
@@ -146,27 +145,25 @@ pipeline {
                                 returnStdout: true
                             ).trim()
 
-                            // Afișează rezultatul
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
                         }
                     }
                 }
 
-                stage('Identifying HPA associated with ${SERVICE_NAME}'){
-                    steps{
-                        script{
-                            env.HPA=sh( 
+                stage("Identifying HPA associated with ${SERVICE_NAME}") {
+                    steps {
+                        script {
+                            env.HPA = sh(
                                 script: '''
-                                kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}"
+                                kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
                                 ''',
                                 returnStdout: true
                             ).trim()
 
                             env.FILTERED_HPA = sh(
                                 script: '''
-                                echo "The HPA containing service ${SERVICE_NAME} are:"
-                                for hpa in ${HPA}; do
-                                    if [[ $hpa == *"${SERVICE_NAME}"* ]]; then
+                                for hpa in $(echo "${HPA}"); do
+                                    if [[ "$hpa" == *"${SERVICE_NAME}"* ]]; then
                                         echo "$hpa"
                                     fi
                                 done
@@ -174,13 +171,11 @@ pipeline {
                                 returnStdout: true
                             ).trim()
 
-                            // Afișează rezultatul
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
                         }
                     }
                 }
             }
-            
         }
 
         stage('Debug - Check Resources Before') {

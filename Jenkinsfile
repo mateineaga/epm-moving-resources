@@ -111,7 +111,7 @@ pipeline {
                                     }
                                 }
                             }'
-                        '''
+                        ''',
                         returnStdout: true
                     ).trim()
                 }

@@ -16,21 +16,6 @@ pipeline {
                   command:
                   - cat
                   tty: true
-                  resources:
-                    requests:
-                      memory: "512Mi"
-                      cpu: "500m"
-                    limits:
-                      memory: "1Gi"
-                      cpu: "1"
-                  securityContext:
-                    runAsUser: 1000
-                    allowPrivilegeEscalation: false
-                  env:
-                    - name: KUBERNETES_SERVICE_HOST
-                      value: "kubernetes.default.svc"
-                    - name: KUBERNETES_SERVICE_PORT
-                      value: "443"
               serviceAccountName: jenkins
             '''
             defaultContainer 'kubectl'
@@ -75,17 +60,42 @@ pipeline {
 
         stage('Getting k8s environment'){
             steps{
-                sh 'kubectl get pods'
-                sh 'kubectl get nodes'
+                sh '''
+                kubectl get deployment -n default nginx-source -o=json | 
+                    jq '{
+                    "spec": {
+                        "template": {
+                            "spec": {
+                                "containers": [{
+                                    "image": .spec.template.spec.containers[0].image,
+                                    "name": .spec.template.spec.containers[0].name,
+                                    "resources": {   
+                                            "limits": {
+                                                "cpu": .spec.template.spec.containers[0].resources.limits.cpu,
+                                                "ephemeral-storage": .spec.template.spec.containers[0].resources.limits["ephemeral-storage"],
+                                                "memory": .spec.template.spec.containers[0].resources.limits.memory
+                                            },
+                                            "requests": {
+                                                "cpu": .spec.template.spec.containers[0].resources.requests.cpu,
+                                                "ephemeral-storage": .spec.template.spec.containers[0].resources.requests["ephemeral-storage"],
+                                                "memory": .spec.template.spec.containers[0].resources.requests.memory
+                                            }
+                                        }
+                                    }]
+                                }
+                            }
+                        }
+                    }
+                '''
             }
         }
     }
 
-    // post {
-    //     always {
-    //         cleanWs deleteDirs: true
-    //     }
-    // }
+    post {
+        always {
+            cleanWs deleteDirs: true
+        }
+    }
     
 
 }

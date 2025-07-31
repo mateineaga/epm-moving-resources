@@ -11,7 +11,7 @@ pipeline {
                 jenkins: agent
             spec:
               containers:
-                - name: omnibus
+                - name: kubectl
                   image: bitnami/kubectl:latest
                   command:
                   - cat
@@ -26,9 +26,14 @@ pipeline {
                   securityContext:
                     runAsUser: 1000
                     allowPrivilegeEscalation: false
+                  env:
+                    - name: KUBERNETES_SERVICE_HOST
+                      value: "kubernetes.default.svc"
+                    - name: KUBERNETES_SERVICE_PORT
+                      value: "443"
               serviceAccountName: jenkins
             '''
-            defaultContainer 'omnibus'
+            defaultContainer 'kubectl'
             namespace 'jenkins'
         }
     }
@@ -76,11 +81,11 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            cleanWs deleteDirs: true
-        }
-    }
+    // post {
+    //     always {
+    //         cleanWs deleteDirs: true
+    //     }
+    // }
     
 
 }

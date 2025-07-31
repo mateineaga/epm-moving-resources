@@ -119,9 +119,9 @@ pipeline {
             }
         }
 
-        stage("Get all the deployments and HPA from ${SOURCE_NAMESPACE}") {
+        stage('Get all the deployments and HPA from ${SOURCE_NAMESPACE}') {
             parallel {
-                stage("Identifying deployments containing ${RELEASE_VERSION}") {
+                stage('Identifying deployments containing ${RELEASE_VERSION}') {
                     steps {
                         script {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
@@ -150,7 +150,7 @@ pipeline {
                     }
                 }
 
-                stage("Identifying HPA associated with ${SERVICE_NAME}") {
+                stage('Identifying HPA associated with ${SERVICE_NAME}') {
                     steps {
                         script {
                             env.HPA = sh(

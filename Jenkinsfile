@@ -158,10 +158,10 @@ pipeline {
                             env.HPA=sh( 
                                 script: '''
                                 kubectl get hpa -n ${SOURCE_NAMESPACE} -o=jsonpath="{range .items[*]}{'\n'}{.metadata.name}"
-                                '''
-                            )
+                                ''',
+                                returnStdout: true
+                            ).trim()
 
-                            // Filtrează deployment-urile care conțin versiunea
                             env.FILTERED_HPA = sh(
                                 script: '''
                                 echo "The HPA containing service ${SERVICE_NAME} are:"

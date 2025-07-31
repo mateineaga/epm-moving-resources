@@ -180,6 +180,23 @@ pipeline {
             
         }
 
+        stage('Debug - Check Resources Before') {
+            when {
+                expression { env.IS_RELEASE == 'true' }
+            }
+            steps {
+                script {
+                    echo "=== RESOURCES BEFORE PATCH ==="
+                    sh '''
+                    for deployment in ${FILTERED_DEPLOYMENTS}; do
+                        echo "\\n=== Checking resources for deployment: $deployment ==="
+                        kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
+                    done
+                    '''
+                }
+            }
+        }
+
         stage('Promoting the candidate (adding resources to ${env.TARGET_NAMESPACE})'){
             when {
                         expression { env.IS_RELEASE == 'true' }
@@ -197,6 +214,23 @@ pipeline {
                     sh '''
                     for hpa in ${HPA}; do
                         kubectl get hpa $hpa -n ${TARGET_NAMESPACE}
+                    done
+                    '''
+                }
+            }
+        }
+
+        stage('Debug - Check Resources After') {
+            when {
+                expression { env.IS_RELEASE == 'true' }
+            }
+            steps {
+                script {
+                    echo "=== RESOURCES AFTER PATCH ==="
+                    sh '''
+                    for deployment in ${FILTERED_DEPLOYMENTS}; do
+                        echo "\\n=== Checking resources for deployment: $deployment ==="
+                        kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
                     done
                     '''
                 }

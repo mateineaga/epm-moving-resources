@@ -74,11 +74,11 @@ pipeline {
             steps {
                 script {
 
-                    env.RELEASE_VERSION = kubectl.getReleaseVersion(
-                        namespace: ${SOURCE_NAMESPACE},
-                        resourceName: ${SERVICE_NAME},
+                    env.RELEASE_VERSION = kubectl.getReleaseVersion([
+                        namespace: "${SOURCE_NAMESPACE}",
+                        resourceName: "${SERVICE_NAME}",
                         resourceType: 'dr'
-                    )
+                    ])
 
                     echo "Version of release is ${RELEASE_VERSION}!"
                 }

@@ -178,6 +178,7 @@ pipeline {
                 script{
                     echo "Allocating more resources to deployments"
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                    
                         writeFile file: "patch-${deployment}.json", text: env.JSON_RESPONSE
 
                         def resources = kubectl.patchUpdateFileJSON([

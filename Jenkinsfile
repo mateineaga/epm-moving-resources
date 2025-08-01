@@ -25,39 +25,33 @@ pipeline {
     }
 
 
-    options([
-        parameters([
-            choice(
-                name: 'BANNER',
-                choices: ['ab', 'dll', 'mi', 'ms', 'alb'],
-                description: 'Select source banner to change resources from'
-            ),
-            choice(
-                name: 'SOURCE_ENV',
-                choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf', 'prod'],
-                description: 'Select environment'
-            ),
-            activeChoice(
-                name: 'TARGET_ENV',
-                script: {
-                    def allEnvs = ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf']
-                    return allEnvs - SOURCE_ENV
-                },
-                description: 'Select target environment',
-                type: 'PT_SINGLE_SELECT'
-            ),
-            choice(
-                name: 'SERVICE_NAME',
-                choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'],
-                description: 'Select the name of the service in which you want to modify resources'
-            ),
-            choice(
-                name: 'IS_RELEASE',
-                choices: ['true', 'false'],
-                description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"'
-            )
-        ])
-    ])
+    parameters {
+        choice(
+            name: 'BANNER',
+            choices: ['ab', 'dll', 'mi', 'ms', 'alb'],
+            description: 'Select source banner to change resources from'
+        )
+        choice(
+            name: 'SOURCE_ENV',
+            choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf', 'prod'],
+            description: 'Select environment'
+        )
+        choice(
+            name: 'TARGET_ENV',
+            choices: ['qa1', 'dev1', 'dev2', 'dev3', 'qa2', 'qa3', 'perf'],
+            description: 'Select target environment'
+        )
+        choice(
+            name: 'SERVICE_NAME',
+            choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'],
+            description: 'Select the name of the service in which you want to modify resources'
+        )
+        choice(
+            name: 'IS_RELEASE',
+            choices: ['true', 'false'],
+            description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"'
+        )
+    }
 
 
     environment {
@@ -74,6 +68,16 @@ pipeline {
                 echo "Is release?: ${IS_RELEASE}"
                 echo "Source NS: ${env.SOURCE_NAMESPACE}"
                 echo "Target NS: ${env.TARGET_NAMESPACE}"
+            }
+        }
+
+        stage('Validate Parameters') {
+            steps {
+                script {
+                    if (params.SOURCE_ENV == params.TARGET_ENV) {
+                        error "Source and Target environments cannot be the same!"
+                    }
+                }
             }
         }
 

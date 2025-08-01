@@ -89,7 +89,7 @@ pipeline {
                     env.JSON_RESPONSE = kubectl.getPatchJsonResponse(
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
-                        resourceType: 'deployment'
+                        resourceType: 'deployment',
                         releaseVersion: "${env.RELEASE_VERSION}"
                     )
                     echo "JSON RESPONSE ${env.JSON_RESPONSE}"

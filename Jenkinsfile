@@ -25,15 +25,40 @@ pipeline {
     }
 
 
-    parameters {
-        choice choices: ['ab', 'dll', 'mi', 'ms', 'alb'], description: 'Select source banner to change resources from', name: 'BANNER'
-        choice choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf', 'prod'], description: 'Select environment', name: 'SOURCE_ENV'
-        choice choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf'], description: 'Select environment', name: 'TARGET_ENV'
-        choice choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'], description: 'Select the name of the service in which you want to modify resources', name: 'SERVICE_NAME'
-        choice choices: ['true', 'false'], description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"', name: 'IS_RELEASE'
-    }
+    properties([
+        parameters([
+            choice(
+                name: 'BANNER',
+                choices: ['ab', 'dll', 'mi', 'ms', 'alb'],
+                description: 'Select source banner to change resources from'
+            ),
+            choice(
+                name: 'SOURCE_ENV',
+                choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf', 'prod'],
+                description: 'Select environment'
+            ),
+            activeChoice(
+                name: 'TARGET_ENV',
+                script: {
+                    def allEnvs = ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf']
+                    return allEnvs - SOURCE_ENV
+                },
+                description: 'Select target environment',
+                type: 'PT_SINGLE_SELECT'
+            ),
+            choice(
+                name: 'SERVICE_NAME',
+                choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'],
+                description: 'Select the name of the service in which you want to modify resources'
+            ),
+            choice(
+                name: 'IS_RELEASE',
+                choices: ['true', 'false'],
+                description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"'
+            )
+        ])
+    ])
 
-    // add logic for source_env must be different thatn target_env
 
     environment {
         SOURCE_NAMESPACE = "${BANNER}-${SOURCE_ENV}-space"
@@ -41,25 +66,6 @@ pipeline {
     }
 
     stages{
-        // stage('Install some tools') {
-        //     steps {
-        //         sh '''
-        //         apt-get update
-        //         apt-get install -y jq curl
-        //         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-        //         install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-        //         '''
-        //     }
-        // }
-
-        // stage ('Checkout source') {
-        //     steps {
-        //         git branch: 'main',
-        //             url: 'https://github.com/mateineaga/epm-moving-resources.git',
-        //             credentialsId: 'GithubCredentials'
-        //         // helloWorld()
-        //     }
-        // }
 
         stage('Checking parameters'){
             steps{
@@ -131,7 +137,7 @@ pipeline {
 
                             env.FILTERED_HPA=kubectl.filterResourcesByVersion([
                                 resources: "${env.HPA}", 
-                                version: "${env.RELEASE_VERSION}"
+                                version: "${env.SERVICE_NAME}"
                             ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
@@ -168,11 +174,13 @@ pipeline {
                 script{
                     echo "Allocating more resources to deployments"
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        writeFile file: "patch-${deployment}.json", text: env.JSON_RESPONSE
+
                         def resources = kubectl.patchUpdateFileJSON([
                             namespace: "${env.TARGET_NAMESPACE}",
                             resourceName: deployment,
                             resourceType: 'deployment',
-                            patchJSON: "${env.JSON_RESPONSE}"
+                            patchFile: "patch-${deployment}.json"
                         ])
                         echo "Resources for deployment ${deployment}: ${resources}"
                     }

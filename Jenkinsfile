@@ -87,12 +87,12 @@ pipeline {
         stage('Generating patch update in JSON form'){
             steps{
                 script{
-                    env.JSON_RESPONSE = kubectl.getPatchJsonResponse(
+                    env.JSON_RESPONSE = kubectl.getPatchJsonResponse([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
                         resourceType: 'deployment',
                         releaseVersion: "${env.RELEASE_VERSION}"
-                    )
+                    ])
                     echo "JSON RESPONSE ${env.JSON_RESPONSE}"
                 }
             }
@@ -106,15 +106,15 @@ pipeline {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
                             echo "Debug - Service Name: ${env.SERVICE_NAME}"
                             
-                            env.DEPLOYMENTS=kubectl.getResources(
+                            env.DEPLOYMENTS=kubectl.getResources([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}"
-                            )
+                            ])
 
-                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByVersion(
+                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByVersion([
                                 resources: "${env.DEPLOYMENTS}", 
                                 version: "${env.RELEASE_VERSION}"
-                            )
+                            ])
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
                         }
@@ -124,15 +124,15 @@ pipeline {
                 stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
                     steps {
                         script {
-                            env.HPA=kubectl.getResources(
+                            env.HPA=kubectl.getResources([
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}"
-                            )
+                            ])
 
-                            env.FILTERED_HPA=kubectl.filterResourcesByVersion(
-                                resources: "${env.DEPLOYMENTS}", 
+                            env.FILTERED_HPA=kubectl.filterResourcesByVersion([
+                                resources: "${env.HPA}", 
                                 version: "${env.RELEASE_VERSION}"
-                            )
+                            ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
                         }
@@ -148,12 +148,14 @@ pipeline {
             steps {
                 script {
                     echo "=== RESOURCES BEFORE PATCH ==="
-                    sh '''#!/bin/bash
-                    for deployment in ${FILTERED_DEPLOYMENTS}; do
-                        echo "\\n=== Checking resources for target deployment: $deployment ==="
-                        kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
-                    done
-                    '''
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        def resources = kubectl.checkResources([
+                            namespace: "${env.TARGET_NAMESPACE}",
+                            resourceName: deployment,
+                            resourceType: 'deployment'
+                        ])
+                        echo "Resources for deployment ${deployment}: ${resources}"
+                    }
                 }
             }
         }
@@ -165,18 +167,25 @@ pipeline {
             steps{
                 script{
                     echo "Allocating more resources to deployments"
-                    sh '''#!/bin/bash
-                    for deployment in ${FILTERED_DEPLOYMENTS}; do
-                        kubectl patch deployment $deployment -n ${TARGET_NAMESPACE} --patch "${JSON_RESPONSE}"
-                    done
-                    '''
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        def resources = kubectl.patchUpdateFileJSON([
+                            namespace: "${env.TARGET_NAMESPACE}",
+                            resourceName: deployment,
+                            resourceType: 'deployment',
+                            patchJSON: "${env.JSON_RESPONSE}"
+                        ])
+                        echo "Resources for deployment ${deployment}: ${resources}"
+                    }
 
                     echo "Changing HPA associated"
-                    sh '''#!/bin/bash
-                    for hpa in ${HPA}; do
-                        kubectl get hpa $hpa -n ${TARGET_NAMESPACE}
-                    done
-                    '''
+                    env.FILTERED_HPA.split('\n').each { hpa ->
+                        def resources = kubectl.getSpecificResource([
+                            namespace: "${env.TARGET_NAMESPACE}",
+                            resourceName: hpa,
+                            resourceType: 'hpa'
+                        ])
+                        echo "Details about hpa ${hpa}: ${resources}"
+                    }
                 }
             }
         }
@@ -188,12 +197,14 @@ pipeline {
             steps {
                 script {
                     echo "=== RESOURCES AFTER PATCH ==="
-                    sh '''#!/bin/bash
-                    for deployment in ${FILTERED_DEPLOYMENTS}; do
-                        echo "\\n=== Checking resources for target deployment after patch: $deployment ==="
-                        kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
-                    done
-                    '''
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        def resources = kubectl.checkResources([
+                            namespace: env.TARGET_NAMESPACE,
+                            resourceName: deployment,
+                            resourceType: 'deployment'
+                        ])
+                        echo "Resources for deployment ${deployment}: ${resources}"
+                    }
                 }
             }
         }

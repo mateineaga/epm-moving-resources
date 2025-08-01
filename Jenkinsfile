@@ -13,6 +13,7 @@ pipeline {
               containers:
                 - name: kubectl
                   image: jenkins-slave:latest
+                  imagePullPolicy: IfNotPresent
                   command:
                   - cat
                   tty: true

@@ -187,7 +187,7 @@ pipeline {
                     echo "=== RESOURCES BEFORE PATCH ==="
                     sh '''#!/bin/bash
                     for deployment in ${FILTERED_DEPLOYMENTS}; do
-                        echo "\\n=== Checking resources for deployment: $deployment ==="
+                        echo "\\n=== Checking resources for target deployment: $deployment ==="
                         kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
                     done
                     '''
@@ -227,7 +227,7 @@ pipeline {
                     echo "=== RESOURCES AFTER PATCH ==="
                     sh '''#!/bin/bash
                     for deployment in ${FILTERED_DEPLOYMENTS}; do
-                        echo "\\n=== Checking resources for deployment: $deployment ==="
+                        echo "\\n=== Checking resources for target deployment after patch: $deployment ==="
                         kubectl get deployment $deployment -n ${TARGET_NAMESPACE} -o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'
                     done
                     '''

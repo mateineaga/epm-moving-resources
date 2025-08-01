@@ -25,7 +25,7 @@ pipeline {
     }
 
 
-    properties([
+    options([
         parameters([
             choice(
                 name: 'BANNER',

@@ -62,8 +62,8 @@ pipeline {
 
         stage('Checking parameters'){
             steps{
-                echo "Banner banner is: ${BANNER}"
-                echo "Service banner is: ${SERVICE_NAME}"
+                echo "Banner is: ${BANNER}"
+                echo "Service name is: ${SERVICE_NAME}"
                 echo "Is release?: ${IS_RELEASE}"
                 echo "Source NS: ${env.SOURCE_NAMESPACE}"
                 echo "Target NS: ${env.TARGET_NAMESPACE}"
@@ -73,10 +73,13 @@ pipeline {
         stage('Get Release Version') {
             steps {
                 script {
-                    env.RELEASE_VERSION = sh(
-                        script: '''kubectl get dr -n ${SOURCE_NAMESPACE} ${SERVICE_NAME} -o=jsonpath="{.spec.subsets[?(@.name=='release')].labels.app\\.kubernetes\\.io/version}" | sed 's/\\./\\-/g' ''',
-                        returnStdout: true
-                    ).trim()
+
+                    env.RELEASE_VERSION = kubectl.getReleaseVersion(
+                        namespace: ${SOURCE_NAMESPACE}
+                        resourceName: ${SERVICE_NAME}
+                        resourceType: 'dr'
+                    )
+                    
                     echo "Version of release is ${RELEASE_VERSION}!"
                 }
             }

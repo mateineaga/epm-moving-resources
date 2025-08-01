@@ -12,7 +12,7 @@ pipeline {
             spec:
               containers:
                 - name: kubectl
-                  image: ubuntu:20.04
+                  image: jenkins-slave:latest
                   command:
                   - cat
                   tty: true
@@ -40,16 +40,16 @@ pipeline {
     }
 
     stages{
-        stage('Install some tools') {
-            steps {
-                sh '''
-                apt-get update
-                apt-get install -y jq curl
-                curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-                '''
-            }
-        }
+        // stage('Install some tools') {
+        //     steps {
+        //         sh '''
+        //         apt-get update
+        //         apt-get install -y jq curl
+        //         curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        //         install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        //         '''
+        //     }
+        // }
 
         // stage ('Checkout source') {
         //     steps {
@@ -93,34 +93,27 @@ pipeline {
                         releaseVersion: "${env.RELEASE_VERSION}"
                     )
                     echo "JSON RESPONSE ${env.JSON_RESPONSE}"
+                }
             }
         }
 
         stage('Get all the deployments and HPA from ${TARGET_NAMESPACE}') {
             parallel {
-                stage('Identifying deployments containing ${RELEASE_VERSION}') {
+                stage('Identifying deployments from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
                     steps {
                         script {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
                             echo "Debug - Service Name: ${env.SERVICE_NAME}"
                             
-                            env.DEPLOYMENTS = sh(
-                                script: '''#!/bin/bash
-                                kubectl get deployments -n ${TARGET_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
-                                ''',
-                                returnStdout: true
-                            ).trim()
+                            env.DEPLOYMENTS=kubectl.getResources(
+                                resources: 'deployments', 
+                                namespace: "${env.TARGET_NAMESPACE}"
+                            )
 
-                            env.FILTERED_DEPLOYMENTS = sh(
-                                script: '''#!/bin/bash
-                                for deployment in $(echo "${DEPLOYMENTS}"); do
-                                    if [[ "$deployment" == *"${RELEASE_VERSION}"* ]]; then
-                                        echo "$deployment"
-                                    fi
-                                done
-                                ''',
-                                returnStdout: true
-                            ).trim()
+                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByVersion(
+                                resources: "${env.DEPLOYMENTS}", 
+                                version: "${env.RELEASE_VERSION}"
+                            )
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
                         }
@@ -130,23 +123,15 @@ pipeline {
                 stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
                     steps {
                         script {
-                            env.HPA = sh(
-                                script: '''#!/bin/bash
-                                kubectl get hpa -n ${TARGET_NAMESPACE} -o=jsonpath="{range .items[*]}{.metadata.name}{ \\"\\n\\"}"
-                                ''',
-                                returnStdout: true
-                            ).trim()
+                            env.HPA=kubectl.getResources(
+                                resources: 'hpa', 
+                                namespace: "${env.TARGET_NAMESPACE}"
+                            )
 
-                            env.FILTERED_HPA = sh(
-                                script: '''#!/bin/bash
-                                for hpa in $(echo "${HPA}"); do
-                                    if [[ "$hpa" == *"${SERVICE_NAME}"* ]]; then
-                                        echo "$hpa"
-                                    fi
-                                done
-                                ''',
-                                returnStdout: true
-                            ).trim()
+                            env.FILTERED_HPA=kubectl.filterResourcesByVersion(
+                                resources: "${env.DEPLOYMENTS}", 
+                                version: "${env.RELEASE_VERSION}"
+                            )
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
                         }
@@ -225,5 +210,5 @@ pipeline {
         }
     }
     
-
+    
 }

@@ -73,13 +73,11 @@ pipeline {
         stage('Get Release Version') {
             steps {
                 script {
-
                     env.RELEASE_VERSION = kubectl.getReleaseVersion([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
                         resourceType: 'dr'
                     ])
-
                     echo "Version of release is ${RELEASE_VERSION}!"
                 }
             }
@@ -88,38 +86,13 @@ pipeline {
         stage('Generating patch update in JSON form'){
             steps{
                 script{
-                    env.JSON_RESPONSE = sh( 
-                        script: '''#!/bin/bash
-                        kubectl get deployment -n ${SOURCE_NAMESPACE} ${SERVICE_NAME}-${RELEASE_VERSION} -o=json | 
-                        jq '{
-                            "spec": {
-                                "template": {
-                                    "spec": {
-                                        "containers": [{
-                                            "image": .spec.template.spec.containers[0].image,
-                                            "name": .spec.template.spec.containers[0].name,
-                                            "resources": {   
-                                                    "limits": {
-                                                        "cpu": .spec.template.spec.containers[0].resources.limits.cpu,
-                                                        "ephemeral-storage": .spec.template.spec.containers[0].resources.limits["ephemeral-storage"],
-                                                        "memory": .spec.template.spec.containers[0].resources.limits.memory
-                                                    },
-                                                    "requests": {
-                                                        "cpu": .spec.template.spec.containers[0].resources.requests.cpu,
-                                                        "ephemeral-storage": .spec.template.spec.containers[0].resources.requests["ephemeral-storage"],
-                                                        "memory": .spec.template.spec.containers[0].resources.requests.memory
-                                                    }
-                                                }
-                                            }]
-                                        }
-                                    }
-                                }
-                            }'
-                        ''',
-                        returnStdout: true
-                    ).trim()
-                }
-                echo "JSON RESPONSE ${env.JSON_RESPONSE}"
+                    env.JSON_RESPONSE = kubectl.getPatchJsonResponse(
+                        namespace: "${SOURCE_NAMESPACE}",
+                        resourceName: "${SERVICE_NAME}",
+                        resourceType: 'deployment'
+                        releaseVersion: "${env.RELEASE_VERSION}"
+                    )
+                    echo "JSON RESPONSE ${env.JSON_RESPONSE}"
             }
         }
 

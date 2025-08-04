@@ -1,4 +1,6 @@
 @Library('shared-library-matei-github') _
+import jenkins.model.Jenkins
+import hudson.plugins.copyartifact.BuildSelector
 
 pipeline {
     agent {
@@ -198,7 +200,7 @@ pipeline {
             // }
             steps {
                 script {
-                    echo "=== RESOURCES BEFORE {params.ACTION} ==="
+                    echo "=== RESOURCES BEFORE APPLY/PATCH ==="
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                         def resources = kubectl.checkResources([
                             namespace: "${env.TARGET_NAMESPACE}",
@@ -252,47 +254,43 @@ pipeline {
                 script {
                     echo "=== REVERTING TO PREVIOUS STATE ==="
                     
-                    // Găsim ultimul build successful care are artefacte
-                    def previousSuccessfulBuild = currentBuild.previousSuccessfulBuild
-                    if (previousSuccessfulBuild) {
-                        // Pentru fiecare deployment
-                        env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                            // Găsim backup-ul corespunzător din artefacte
-                            def artifactPattern = "backup-${deployment}-*.json"
+                    // Pentru fiecare deployment
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        // Găsim backup-ul corespunzător din artefacte
+                        def artifactPattern = "backup-${deployment}-*.json"
+                        
+                        // Copiem artefactul din build-ul anterior folosind lastSuccessful
+                        copyArtifacts(
+                            projectName: env.JOB_NAME,
+                            selector: lastSuccessful(),
+                            filter: artifactPattern
+                        )
+                        
+                        // Găsim fișierul backup copiat
+                        def backupFiles = findFiles(glob: artifactPattern)
+                        if (backupFiles.length > 0) {
+                            def backupFile = backupFiles[0]
+                            echo "Found backup for ${deployment}: ${backupFile.name}"
                             
-                            // Copiem artefactul din build-ul anterior
-                            copyArtifacts(
-                                projectName: env.JOB_NAME,
-                                selector: specific(previousSuccessfulBuild.number),
-                                filter: artifactPattern
-                            )
+                            // Citim conținutul backup-ului
+                            def revertPatch = readFile(backupFile.path)
                             
-                            // Găsim fișierul backup copiat
-                            def backupFile = findFiles(glob: artifactPattern)[0]
+                            // Creăm fișierul de patch pentru revert
+                            def revertFileName = "revert-${deployment}.json"
+                            writeFile file: revertFileName, text: revertPatch
                             
-                            if (backupFile) {
-                                echo "Found backup for ${deployment}: ${backupFile.name}"
-                                
-                                // Citim conținutul backup-ului
-                                def revertPatch = readFile(backupFile.path)
-                                
-                                // Creăm fișierul de patch pentru revert
-                                def revertFileName = "revert-${deployment}.json"
-                                writeFile file: revertFileName, text: revertPatch
-                                
-                                // Aplicăm patch-ul
-                                kubectl.patchUpdateFileJSON([
-                                    namespace: env.TARGET_NAMESPACE,
-                                    resourceName: deployment,
-                                    resourceType: 'deployment',
-                                    patchFile: revertFileName
-                                ])
-                                
-                                echo "Reverted deployment: ${deployment}"
-                            }
+                            // Aplicăm patch-ul
+                            kubectl.patchUpdateFileJSON([
+                                namespace: env.TARGET_NAMESPACE,
+                                resourceName: deployment,
+                                resourceType: 'deployment',
+                                patchFile: revertFileName
+                            ])
+                            
+                            echo "Reverted deployment: ${deployment}"
+                        } else {
+                            error "No backup files found for deployment: ${deployment}"
                         }
-                    } else {
-                        error "No previous successful build found with artifacts"
                     }
                 }
             }

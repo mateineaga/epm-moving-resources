@@ -250,39 +250,40 @@ pipeline {
             }
             steps{
                 script {
-                echo "=== REVERTING TO PREVIOUS STATE ==="
-                def backupBaseDir = "/tmp/jenkins-backups/${env.TARGET_NAMESPACE}/${SERVICE_NAME}"
-                
-                // Găsește cel mai recent backup pentru fiecare deployment
-                env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                    def latestBackup = sh(
-                        script: """
-                        find ${backupBaseDir} -name "backup-${deployment}-*.json" -type f | sort -r | head -1
-                        """,
-                        returnStdout: true
-                    ).trim()
+                    echo "=== REVERTING TO PREVIOUS STATE ==="
+                    def backupBaseDir = "/tmp/jenkins-backups/${env.TARGET_NAMESPACE}/${SERVICE_NAME}"
                     
-                    if (latestBackup) {
-                        echo "Found backup for ${deployment}: ${latestBackup}"
+                    // Găsește cel mai recent backup pentru fiecare deployment
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        def latestBackup = sh(
+                            script: """
+                            find ${backupBaseDir} -name "backup-${deployment}-*.json" -type f | sort -r | head -1
+                            """,
+                            returnStdout: true
+                        ).trim()
                         
-                        // Extrage resources din backup
-                        def revertPatch = kubectl.extractResourcesFromBackup([
-                            backupFile: latestBackup,
-                            resourceName: deployment
-                        ])
-                        
-                        // Creează patch file pentru revert
-                        writeFile file: "revert-${deployment}.json", text: revertPatch
-                        
-                        // Aplică revert patch
-                        kubectl.patchUpdateFileJSON([
-                            namespace: env.TARGET_NAMESPACE,
-                            resourceName: deployment,
-                            resourceType: 'deployment',
-                            patchFile: "revert-${deployment}.json"
-                        ])
-                        
-                        echo "Reverted deployment: ${deployment}"
+                        if (latestBackup) {
+                            echo "Found backup for ${deployment}: ${latestBackup}"
+                            
+                            // Extrage resources din backup
+                            def revertPatch = kubectl.extractResourcesFromBackup([
+                                backupFile: latestBackup,
+                                resourceName: deployment
+                            ])
+                            
+                            // Creează patch file pentru revert
+                            writeFile file: "revert-${deployment}.json", text: revertPatch
+                            
+                            // Aplică revert patch
+                            kubectl.patchUpdateFileJSON([
+                                namespace: env.TARGET_NAMESPACE,
+                                resourceName: deployment,
+                                resourceType: 'deployment',
+                                patchFile: "revert-${deployment}.json"
+                            ])
+                            
+                            echo "Reverted deployment: ${deployment}"
+                        }
                     }
                 }
             }

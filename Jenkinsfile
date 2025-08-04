@@ -266,14 +266,17 @@ pipeline {
                             filter: artifactPattern
                         )
                         
-                        // Găsim fișierul backup copiat
-                        def backupFiles = findFiles(glob: artifactPattern)
-                        if (backupFiles.length > 0) {
-                            def backupFile = backupFiles[0]
-                            echo "Found backup for ${deployment}: ${backupFile.name}"
+                        // Verificăm dacă există fișierul de backup
+                        def backupFile = sh(
+                            script: "ls -1 ${artifactPattern} | head -1",
+                            returnStdout: true
+                        ).trim()
+                        
+                        if (backupFile) {
+                            echo "Found backup for ${deployment}: ${backupFile}"
                             
                             // Citim conținutul backup-ului
-                            def revertPatch = readFile(backupFile.path)
+                            def revertPatch = readFile(backupFile)
                             
                             // Creăm fișierul de patch pentru revert
                             def revertFileName = "revert-${deployment}.json"

@@ -102,27 +102,6 @@ pipeline {
             }
         }
 
-        stage('Generating patch update in JSON form, from source deployment!'){
-            when {
-                expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
-            }
-            steps{
-                script{
-                    env.JSON_RESPONSE = kubectl.getPatchJsonResponse([
-                        namespace: "${SOURCE_NAMESPACE}",
-                        resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
-                        resourceType: 'deployment',
-                        releaseVersion: "${env.RELEASE_VERSION}"
-                    ])
-                    echo "JSON RESPONSE ${env.JSON_RESPONSE}"
-                }
-            }
-        }
-
-
-
-        
-
         stage('Get all the deployments and HPA from ${TARGET_NAMESPACE}') {
             parallel {
                 stage('Identifying deployments from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
@@ -136,7 +115,7 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByVersion([
+                            env.FILTERED_DEPLOYMENTS=kubectl.filterDeploymentsByVersion([
                                 resources: "${env.DEPLOYMENTS}", 
                                 version: "${env.RELEASE_VERSION}"
                             ])
@@ -154,12 +133,47 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            env.FILTERED_HPA=kubectl.filterResourcesByVersion([
+                            env.FILTERED_HPA=kubectl.filterHPAByVersion([
                                 resources: "${env.HPA}", 
-                                version: "${env.SERVICE_NAME}"
+                                version: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Getting JSON files for HPA and deployments'){
+            parallel{
+                stage('Generating patch update in JSON form, from source deployment!'){
+                    when {
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
+                    }
+                    steps{
+                        script{
+                            env.DEPLOYMENT_JSON_RESPONSE = kubectl.getPatchJsonResponseDeployment([
+                                namespace: "${SOURCE_NAMESPACE}",
+                                resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
+                                releaseVersion: "${env.RELEASE_VERSION}"
+                            ])
+                            echo "JSON RESPONSE ${env.DEPLOYMENT_JSON_RESPONSE}"
+                        }
+                    }
+                }
+
+                stage('Generating patch update in JSON form, from source hpa!'){
+                    when {
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
+                    }
+                    steps{
+                        script{
+                            env.HPA_JSON_RESPONSE = kubectl.getHPAPatchJsonResponse([
+                                namespace: "${SOURCE_NAMESPACE}",
+                                resourceName: env.FILTERED_HPA.trim()
+                            ])
+                            echo "JSON RESPONSE for source hpa ${env.HPA_JSON_RESPONSE}"
                         }
                     }
                 }
@@ -178,7 +192,7 @@ pipeline {
                         def backupFileName = "backup-${deployment}-${timestamp}.json"
 
                         def jsonResponse = kubectl.getPatchJsonResponse([
-                            namespace: "${TARGET_NAMESPACE}",
+                            namespace: "${SOURCE_NAMESPACE}",
                             resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
                             resourceType: 'deployment',
                             releaseVersion: "${env.RELEASE_VERSION}"
@@ -188,7 +202,20 @@ pipeline {
                         writeFile file: backupFileName, text: jsonResponse
                         archiveArtifacts artifacts: backupFileName
                         
-                        echo "Backup saved as artifact: ${backupFileName}"
+                        echo "Deployment Backup saved as artifact: ${backupFileName}"
+
+                        def hpa = env.FILTERED_HPA.trim()
+                        def hpaBackupFileName = "backup-hpa-${hpa}-${timestamp}.json"
+
+                        def hpaJsonResponse = kubectl.getHPAPatchJsonResponse([
+                            namespace: "${TARGET_NAMESPACE}",
+                            resourceName: hpa
+                        ])
+
+                        writeFile file: hpaBackupFileName, text: hpaJsonResponse
+                        archiveArtifacts artifacts: hpaBackupFileName
+
+                        echo "HPA Backup saved as artifact: ${hpaBackupFileName}"
                     }
                 }
             }
@@ -222,7 +249,7 @@ pipeline {
                     echo "Allocating more resources to deployments"
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                     
-                        writeFile file: "patch-${deployment}.json", text: env.JSON_RESPONSE
+                        writeFile file: "patch-${deployment}.json", text: env.DEPLOYMENT_JSON_RESPONSE
 
                         def resources = kubectl.patchUpdateFileJSON([
                             namespace: "${env.TARGET_NAMESPACE}",
@@ -234,14 +261,15 @@ pipeline {
                     }
 
                     echo "Changing HPA associated"
-                    env.FILTERED_HPA.split('\n').each { hpa ->
-                        def resources = kubectl.getSpecificResource([
-                            namespace: "${env.TARGET_NAMESPACE}",
-                            resourceName: hpa,
-                            resourceType: 'hpa'
-                        ])
-                        echo "Details about hpa ${hpa}: ${resources}"
-                    }
+                    def hpa = env.FILTERED_HPA.trim()
+                    writeFile file: "patch-${hpa}.json", text: env.HPA_JSON_RESPONSE
+
+                    def hpaResources = kubectl.patchUpdateFileJSON([
+                        namespace: "${env.TARGET_NAMESPACE}",
+                        resourceName: hpa,
+                        resourceType: 'hpa',
+                        patchFile: "patch-${hpa}.json"
+                    ])
                 }
             }
         }
@@ -295,6 +323,36 @@ pipeline {
                             error "No backup files found for deployment: ${deployment}"
                         }
                     }
+
+                    def hpa = env.FILTERED_HPA.trim()
+                    def hpaArtifactPattern = "backup-hpa-${hpa}-*.json"
+
+                    copyArtifacts(
+                        projectName: env.JOB_NAME,
+                        selector: lastSuccessful(),
+                        filter: hpaArtifactPattern
+                    )
+
+                    def hpaBackupFile = sh(
+                        script: "ls -1 ${hpaArtifactPattern} | head -1",
+                        returnStdout: true
+                    ).trim()
+
+                    if (hpaBackupFile) {
+                        echo "Found backup for HPA ${hpa}: ${hpaBackupFile}"
+                        def hpaRevertPatch = readFile(hpaBackupFile)
+                        def hpaRevertFileName = "revert-hpa-${hpa}.json"
+                        writeFile file: hpaRevertFileName, text: hpaRevertPatch
+
+                        kubectl.patchUpdateFileJSON([
+                            namespace: env.TARGET_NAMESPACE,
+                            resourceName: hpa,
+                            resourceType: 'hpa',
+                            patchFile: hpaRevertFileName
+                        ])
+
+                        echo "Reverted HPA: ${hpa}"
+                    }
                 }
             }
         }
@@ -305,7 +363,7 @@ pipeline {
             // }
             steps {
                 script {
-                    echo "=== RESOURCES AFTER PATCH ==="
+                    echo " RESOURCES AFTER PATCH - DEPLOYMENT"
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                         def resources = kubectl.checkResources([
                             namespace: env.TARGET_NAMESPACE,
@@ -314,6 +372,15 @@ pipeline {
                         ])
                         echo "Resources for deployment ${deployment}: ${resources}"
                     }
+                    
+                    echo "RESOURCES AFTER PATCH - HPA"
+                    def hpa = env.FILTERED_HPA.trim()
+                    def hpaResources = kubectl.checkResources([
+                        namespace: env.TARGET_NAMESPACE,
+                        resourceName: hpa,
+                        resourceType: 'hpa'
+                    ])
+                    echo "Resources for HPA ${hpa}: ${hpaResources}"
                 }
             }
         }

@@ -170,18 +170,23 @@ pipeline {
             }
             steps {
                 script {
+                    def backupBaseDir = "/tmp/jenkins-backups/${env.TARGET_NAMESPACE}/${SERVICE_NAME}"
+                    sh "mkdir -p ${backupBaseDir}"
+
                     echo "=== BACKING UP CURRENT STATE ==="
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                         def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                        
+                        def backupPath = "${backupBaseDir}/backup-${deployment}-${timestamp}.json"
+
                         kubectl.getPatchJsonResponse([
                             namespace: "${TARGET_NAMESPACE}",
                             resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
                             resourceType: 'deployment',
                             releaseVersion: "${env.RELEASE_VERSION}",
-                            saveToFile: "backup-${deployment}-${timestamp}.json"
+                            saveToFile: backupPath
                         ])
                         
+                        echo "Backup saved: ${backupPath}"
                     }
                 }
             }
@@ -246,12 +251,13 @@ pipeline {
             steps{
                 script {
                 echo "=== REVERTING TO PREVIOUS STATE ==="
+                def backupBaseDir = "/tmp/jenkins-backups/${env.TARGET_NAMESPACE}/${SERVICE_NAME}"
                 
                 // Găsește cel mai recent backup pentru fiecare deployment
                 env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                     def latestBackup = sh(
                         script: """
-                        find . -name "backup-${deployment}-*.json" -type f | sort -r | head -1
+                        find ${backupBaseDir} -name "backup-${deployment}-*.json" -type f | sort -r | head -1
                         """,
                         returnStdout: true
                     ).trim()

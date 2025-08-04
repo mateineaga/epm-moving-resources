@@ -170,13 +170,10 @@ pipeline {
             }
             steps {
                 script {
-                    def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                    def backupFileName = "backup-${deployment}-${timestamp}.json"
-
                     echo "=== BACKING UP CURRENT STATE ==="
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                         def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                        def backupPath = "${backupBaseDir}/backup-${deployment}-${timestamp}.json"
+                        def backupFileName = "backup-${deployment}-${timestamp}.json"
 
                         def jsonResponse = kubectl.getPatchJsonResponse([
                             namespace: "${TARGET_NAMESPACE}",

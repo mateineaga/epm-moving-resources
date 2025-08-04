@@ -27,6 +27,11 @@ pipeline {
 
     parameters {
         choice(
+            name: 'ACTION',
+            choices: ['apply', 'revert'],
+            description: 'Choose action: apply changes or revert to previous state'
+        )
+        choice(
             name: 'BANNER',
             choices: ['ab', 'dll', 'mi', 'ms', 'alb'],
             description: 'Select source banner to change resources from'
@@ -51,6 +56,7 @@ pipeline {
             choices: ['true', 'false'],
             description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"'
         )
+        
     }
 
 
@@ -94,12 +100,15 @@ pipeline {
             }
         }
 
-        stage('Generating patch update in JSON form'){
+        stage('Generating patch update in JSON form, from source deployment!'){
+            when {
+                expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
+            }
             steps{
                 script{
                     env.JSON_RESPONSE = kubectl.getPatchJsonResponse([
                         namespace: "${SOURCE_NAMESPACE}",
-                        resourceName: "${SERVICE_NAME}",
+                        resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
                         resourceType: 'deployment',
                         releaseVersion: "${env.RELEASE_VERSION}"
                     ])
@@ -107,6 +116,10 @@ pipeline {
                 }
             }
         }
+
+
+
+        
 
         stage('Get all the deployments and HPA from ${TARGET_NAMESPACE}') {
             parallel {
@@ -151,13 +164,36 @@ pipeline {
             }
         }
 
-        stage('Debug - Check Resources Before') {
+        stage('Backup Current State for targe deployment') {
             when {
-                expression { env.IS_RELEASE == 'true' }
+                expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
             }
             steps {
                 script {
-                    echo "=== RESOURCES BEFORE PATCH ==="
+                    echo "=== BACKING UP CURRENT STATE ==="
+                    env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                        def timestamp = new Date().format('yyyyMMdd-HHmmss')
+                        
+                        kubectl.getPatchJsonResponse([
+                            namespace: "${TARGET_NAMESPACE}",
+                            resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
+                            resourceType: 'deployment',
+                            releaseVersion: "${env.RELEASE_VERSION}",
+                            saveToFile: "backup-${deployment}-${timestamp}.json"
+                        ])
+                        
+                    }
+                }
+            }
+        }
+
+        stage('Debug - Check Resources Before') {
+            // when {
+            //     expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
+            // }
+            steps {
+                script {
+                    echo "=== RESOURCES BEFORE {params.ACTION} ==="
                     env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                         def resources = kubectl.checkResources([
                             namespace: "${env.TARGET_NAMESPACE}",
@@ -172,7 +208,7 @@ pipeline {
 
         stage('Promoting the candidate (adding resources to ${env.TARGET_NAMESPACE})'){
             when {
-                        expression { env.IS_RELEASE == 'true' }
+                expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' }
             }
             steps{
                 script{
@@ -203,10 +239,53 @@ pipeline {
             }
         }
 
-        stage('Debug - Check Resources After') {
+        stage('Reverting the resources to initial values.'){
             when {
-                expression { env.IS_RELEASE == 'true' }
+                expression { params.ACTION == 'revert' }
             }
+            steps{
+                script {
+                echo "=== REVERTING TO PREVIOUS STATE ==="
+                
+                // Găsește cel mai recent backup pentru fiecare deployment
+                env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                    def latestBackup = sh(
+                        script: """
+                        find . -name "backup-${deployment}-*.json" -type f | sort -r | head -1
+                        """,
+                        returnStdout: true
+                    ).trim()
+                    
+                    if (latestBackup) {
+                        echo "Found backup for ${deployment}: ${latestBackup}"
+                        
+                        // Extrage resources din backup
+                        def revertPatch = kubectl.extractResourcesFromBackup([
+                            backupFile: latestBackup,
+                            resourceName: deployment
+                        ])
+                        
+                        // Creează patch file pentru revert
+                        writeFile file: "revert-${deployment}.json", text: revertPatch
+                        
+                        // Aplică revert patch
+                        kubectl.patchUpdateFileJSON([
+                            namespace: env.TARGET_NAMESPACE,
+                            resourceName: deployment,
+                            resourceType: 'deployment',
+                            patchFile: "revert-${deployment}.json"
+                        ])
+                        
+                        echo "Reverted deployment: ${deployment}"
+                    }
+                }
+            }
+        }
+
+        stage('Debug - Check Resources After') {
+            // when {
+            //     expression { env.IS_RELEASE == 'true' }
+            // }
             steps {
                 script {
                     echo "=== RESOURCES AFTER PATCH ==="

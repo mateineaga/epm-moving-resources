@@ -100,9 +100,9 @@ pipeline {
             }
         }
 
-        stage('Get all the deployments and HPA from ${env.TARGET_NAMESPACE}') {
+        stage("Get all the deployments and HPA from ${env.TARGET_NAMESPACE}") {
             parallel{
-                stage('Identifying deployments from target namespace ${env.TARGET_NAMESPACE} associated with ${env.SERVICE_NAME}-${env.RELEASE_VERSION}') {
+                stage("Identifying deployments from target namespace ${env.TARGET_NAMESPACE} associated with ${env.SERVICE_NAME}-${env.RELEASE_VERSION}") {
                     when {
                             expression { params.DEPLOYMENT == true }
                     }
@@ -128,7 +128,7 @@ pipeline {
                     }
                 }
 
-                stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
+                stage("Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}") {
                     when {
                         expression { params.HPA == true }
                     }
@@ -143,7 +143,7 @@ pipeline {
 
                             env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 
-                                identifier: "${env.SERVICE_NAME.replace("-svc","-dep")}-${env.RELEASE_VERSION}"
+                                identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
@@ -289,7 +289,7 @@ pipeline {
             }
         }
 
-        stage('Promoting the candidate (adding resources to ${env.TARGET_NAMESPACE})'){
+        stage("Promoting the candidate (adding resources to ${env.TARGET_NAMESPACE})"){
             parallel{
                 stage('Patching the target deployment!'){
                     when {

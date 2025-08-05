@@ -184,14 +184,14 @@ pipeline {
                                 namespace: "${env.SOURCE_NAMESPACE}"
                             ])
 
-                            echo "All source HPA to extract specs from are: ${env.HPA}"
+                            echo "All source HPA to extract specs from are: ${env.SOURCE_HPA}"
 
                             env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.SOURCE_HPA}", 
                                 identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
                             ])
 
-                            echo "Filtered source HPA to extract specs from are: ${env.FILTERED_HPA}"
+                            echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
 
                             env.HPA_JSON_RESPONSE = kubectl.getHPAPatchJsonResponse([
                                 namespace: "${SOURCE_NAMESPACE}",
@@ -333,17 +333,22 @@ pipeline {
 
                 stage('Patching the target hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
                     }
                     steps{
                         script{
                             echo "Changing HPA associated"
                             def hpa = env.FILTERED_HPA.trim()
                             def patchFile = "patch-${hpa}.json"
-                            writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
 
+
+                            echo "=== HPA JSON Response to be applied ==="
+                            echo env.HPA_JSON_RESPONSE
+                            
                             echo "=== Content of ${patchFile} ==="
                             sh "cat ${patchFile}"
+
+                            writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
 
                             kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",

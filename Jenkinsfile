@@ -318,13 +318,13 @@ pipeline {
                             
                                 writeFile file: "patch-${deployment}.json", text: env.DEPLOYMENT_JSON_RESPONSE
 
-                                def resources = kubectl.patchUpdateFileJSON([
+                                kubectl.patchUpdateFileJSON([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
                                     resourceType: 'deployment',
                                     patchFile: "patch-${deployment}.json"
                                 ])
-                                echo "Resources for deployment ${deployment}: ${resources}"
+
                             }
                         }
                     }
@@ -341,14 +341,14 @@ pipeline {
                             def hpa = env.FILTERED_HPA.trim()
                             writeFile file: "patch-${hpa}.json", text: env.HPA_JSON_RESPONSE
 
-                            def hpaResources = kubectl.patchUpdateFileJSON([
+                            kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: hpa,
                                 resourceType: 'hpa',
                                 patchFile: "patch-${hpa}.json"
 
                             ])
-                            echo "Resources for HPA ${hpa}: ${hpaResources}"
+
                         }
                     }
                 }
@@ -458,21 +458,18 @@ pipeline {
             
         
 
-        stage('Debug - Check Resources After') {
-            // when {
-            //     expression { params.IS_RELEASE == true }
-            // }
-            parallel{
-                stage('Debug for target deployment'){
+        stage('Debug - Check Resources after') {
+            parallel {
+                stage('Check Deployment Resources') {
                     when {
-                        expression { params.DEPLOYMENT == true}
+                        expression { params.DEPLOYMENT == true }
                     }
-                    steps{
-                        script{
-                            echo " RESOURCES AFTER PATCH - DEPLOYMENT"
+                    steps {
+                        script {
+                            echo "=== RESOURCES after APPLY/PATCH - DEPLOYMENTS ==="
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
                                 def resources = kubectl.checkResourcesDeployment([
-                                    namespace: env.TARGET_NAMESPACE,
+                                    namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
                                     resourceType: 'deployment'
                                 ])
@@ -482,25 +479,24 @@ pipeline {
                     }
                 }
 
-                stage('Debug for target hpa'){
+                stage('Check HPA Resources') {
                     when {
-                        expression { params.HPA == true}
+                        expression { params.HPA == true }
                     }
-                    steps{
-                        script{
-                            echo "RESOURCES AFTER PATCH - HPA"
-                            def hpa = env.FILTERED_HPA.trim()
-                            def hpaResources = kubectl.checkResourcesHPA([
-                                namespace: env.TARGET_NAMESPACE,
-                                resourceName: hpa,
+                    steps {
+                        script {
+                            echo "=== RESOURCES after APPLY/PATCH - HPA ==="
+                            env.HPA_JSON_RESPONSE = kubectl.checkResourcesHPA([
+                                namespace: "${env.TARGET_NAMESPACE}",
+                                resourceName: env.FILTERED_HPA.trim(),
                                 resourceType: 'hpa'
                             ])
-                            echo "Resources for HPA ${hpa}: ${hpaResources}"
+
+                            echo "Resources for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
                         }
                     }
                 }
             }
-            
         }
         
     }

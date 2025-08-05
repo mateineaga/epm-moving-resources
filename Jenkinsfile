@@ -55,11 +55,7 @@ pipeline {
             choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'],
             description: 'Select the name of the service in which you want to modify resources'
         )
-        choice(
-            name: 'IS_RELEASE',
-            choices: ['true', 'false'],
-            description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"'
-        )
+        booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the target service to be promoted to "release" from "candidate"')
         
     }
 
@@ -108,7 +104,7 @@ pipeline {
             parallel{
                 stage('Identifying deployments from target namespace ${env.TARGET_NAMESPACE} associated with ${env.SERVICE_NAME}-${env.RELEASE_VERSION}') {
                     when {
-                            expression { params.DEPLOYMENT == 'true' }
+                            expression { params.DEPLOYMENT == true }
                     }
                     steps {
                         script {
@@ -132,7 +128,7 @@ pipeline {
 
                 stage('Identifying HPA from target namespace ${TARGET_NAMESPACE} associated with ${SERVICE_NAME}-${RELEASE_VERSION}') {
                     when {
-                        expression { params.HPA == 'true' }
+                        expression { params.HPA == true }
                     }
                     steps {
                         script {
@@ -159,7 +155,7 @@ pipeline {
             parallel{
                 stage('Generating patch update in JSON form, from source deployment!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.DEPLOYMENT == 'true' }
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true }
                     }
                     steps{
                         script{
@@ -175,7 +171,7 @@ pipeline {
 
                 stage('Generating patch update in JSON form, from source hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.HPA == 'hpa'}
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.HPA == 'hpa'}
                     }
                     steps{
                         script{
@@ -194,7 +190,7 @@ pipeline {
             parallel{
                 stage('Backing up for target deployment'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.DEPLOYMENT == 'true'}
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
 
                     steps {
@@ -224,7 +220,7 @@ pipeline {
             
                 stage('Backing up for target hpa'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.HPA == 'true'}
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.HPA == true}
                     }
                     steps{
                         script{
@@ -293,7 +289,7 @@ pipeline {
             parallel{
                 stage('Patching the target deployment!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.DEPLOYMENT == 'true'}
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -317,7 +313,7 @@ pipeline {
 
                 stage('Patching the target hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == 'true' && params.DEPLOYMENT == 'true'}
+                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -347,7 +343,7 @@ pipeline {
             parallel{
                 stage('Reverting the target deployment'){
                     when {
-                        expression { params.DEPLOYMENT == 'true'}
+                        expression { params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -401,7 +397,7 @@ pipeline {
 
                 stage('Reverting the target hpa'){
                     when {
-                        expression { params.HPA == 'true'}
+                        expression { params.HPA == true}
                     }
                     steps{
                         script{
@@ -444,12 +440,12 @@ pipeline {
 
         stage('Debug - Check Resources After') {
             // when {
-            //     expression { env.IS_RELEASE == 'true' }
+            //     expression { env.IS_RELEASE == true }
             // }
             parallel{
                 stage('Debug for target deployment'){
                     when {
-                        expression { params.DEPLOYMENT == 'true'}
+                        expression { params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -468,7 +464,7 @@ pipeline {
 
                 stage('Debug for target hpa'){
                     when {
-                        expression { params.HPA == 'true'}
+                        expression { params.HPA == true}
                     }
                     steps{
                         script{

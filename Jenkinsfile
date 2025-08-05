@@ -134,7 +134,7 @@ pipeline {
 
                             env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 
-                                identifier: "${env.SERVICE_NAME}.replace("-svc","-dep")-${env.RELEASE_VERSION}"
+                                identifier: "${env.SERVICE_NAME.replace("-svc","-dep")}-${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"

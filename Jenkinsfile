@@ -345,10 +345,11 @@ pipeline {
                             echo "=== HPA JSON Response to be applied ==="
                             echo env.HPA_JSON_RESPONSE
                             
+                            writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
+                            
                             echo "=== Content of ${patchFile} ==="
                             sh "cat ${patchFile}"
 
-                            writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
 
                             kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",

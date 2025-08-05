@@ -116,6 +116,8 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
+                            echo "Non filtered deployments are: ${env.DEPLOYMENTS}"
+
                             env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.DEPLOYMENTS}", 
                                 identifier: "${env.RELEASE_VERSION}"
@@ -136,6 +138,8 @@ pipeline {
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
+
+                            echo "Non filtered HPA are: ${env.HPA}"
 
                             env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 

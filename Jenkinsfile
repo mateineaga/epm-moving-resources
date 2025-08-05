@@ -229,6 +229,7 @@ pipeline {
                     steps{
                         script{
                             def hpa = env.FILTERED_HPA.trim()
+                            def timestamp = new Date().format('yyyyMMdd-HHmmss')
                             def hpaBackupFileName = "backup-hpa-${hpa}-${timestamp}.json"
 
                             def hpaJsonResponse = kubectl.getHPAPatchJsonResponse([

@@ -213,7 +213,7 @@ pipeline {
                     }
                     steps {
                         script {
-                            kubectl.backupResource([
+                            def backup = kubectl.backupResource([
                                 namespace: env.TARGET_NAMESPACE,
                                 resourceName: env.FILTERED_DEPLOYMENTS.trim(),
                                 resourceType: 'deployment',
@@ -221,6 +221,11 @@ pipeline {
                                 releaseVersion: env.RELEASE_VERSION,
                                 serviceName: env.SERVICE_NAME
                             ])
+                            
+                            writeFile file: backup.fileName, text: backup.content
+                            archiveArtifacts artifacts: backup.fileName
+                            
+                            echo "Deployment backup saved as artifact: ${backup.fileName}"
                         }
                     }
                 }
@@ -231,12 +236,17 @@ pipeline {
                     }
                     steps {
                         script {
-                            kubectl.backupResource([
+                            def backup = kubectl.backupResource([
                                 namespace: env.TARGET_NAMESPACE,
                                 resourceName: env.FILTERED_HPA.trim(),
                                 resourceType: 'hpa',
                                 backupPrefix: 'backup-hpa'
                             ])
+                            
+                            writeFile file: backup.fileName, text: backup.content
+                            archiveArtifacts artifacts: backup.fileName
+                            
+                            echo "HPA backup saved as artifact: ${backup.fileName}"
                         }
                     }
                 }

@@ -102,7 +102,7 @@ pipeline {
 
         stage('Get all the deployments and HPA from target namespace') {
             parallel{
-                stage('Identifying deployments ') {
+                stage('Identifying deployments from target environment') {
                     when {
                             expression { params.DEPLOYMENT == true }
                     }
@@ -128,7 +128,7 @@ pipeline {
                     }
                 }
 
-                stage('Identifying HPA ') {
+                stage('Identifying HPA from target environment') {
                     when {
                         expression { params.HPA == true }
                     }
@@ -139,14 +139,14 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            echo "Non filtered HPA are: ${env.HPA}"
+                            echo "Non filtered target HPA are: ${env.HPA}"
 
                             env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 
                                 identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
                             ])
 
-                            echo "Filtered HPA are: ${env.FILTERED_HPA}"
+                            echo "Filtered target HPA are: ${env.FILTERED_HPA}"
                         }
                     }
                 }
@@ -179,10 +179,25 @@ pipeline {
                     }
                     steps{
                         script{
+                            env.SOURCE_HPA=kubectl.getResources([
+                                resources: 'hpa', 
+                                namespace: "${env.SOURCE_NAMESPACE}"
+                            ])
+
+                            echo "All source HPA to extract specs from are: ${env.HPA}"
+
+                            env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
+                                resources: "${env.SOURCE_HPA}", 
+                                identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
+                            ])
+
+                            echo "Filtered source HPA to extract specs from are: ${env.FILTERED_HPA}"
+
                             env.HPA_JSON_RESPONSE = kubectl.getHPAPatchJsonResponse([
                                 namespace: "${SOURCE_NAMESPACE}",
-                                resourceName: env.FILTERED_HPA.trim()
+                                resourceName: env.SOURCE_FILTERED_HPA.trim()
                             ])
+
                             echo "JSON RESPONSE for source hpa ${env.HPA_JSON_RESPONSE}"
                         }
                     }

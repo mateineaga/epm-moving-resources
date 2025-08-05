@@ -175,7 +175,7 @@ pipeline {
 
                 stage('Generating patch update in JSON form, from source hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == 'hpa'}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
                     }
                     steps{
                         script{
@@ -204,7 +204,7 @@ pipeline {
                                 def timestamp = new Date().format('yyyyMMdd-HHmmss')
                                 def backupFileName = "backup-${deployment}-${timestamp}.json"
 
-                                def jsonResponse = kubectl.getPatchJsonResponse([
+                                def jsonResponse = kubectl.getPatchJsonResponseDeployment([
                                     namespace: "${SOURCE_NAMESPACE}",
                                     resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
                                     resourceType: 'deployment',

@@ -220,7 +220,7 @@ pipeline {
                                 def backupFileName = "backup-${deployment}-${timestamp}.json"
 
                                 def jsonResponse = kubectl.getPatchJsonResponseDeployment([
-                                    namespace: "${SOURCE_NAMESPACE}",
+                                    namespace: "${TARGET_NAMESPACE}",
                                     resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
                                     resourceType: 'deployment',
                                     releaseVersion: "${env.RELEASE_VERSION}"
@@ -279,7 +279,7 @@ pipeline {
                                     resourceName: deployment,
                                     resourceType: 'deployment'
                                 ])
-                                echo "Resources for deployment ${deployment}: ${resources}"
+                                echo "Resources before patch for deployment ${deployment}: ${resources}"
                             }
                         }
                     }
@@ -298,7 +298,7 @@ pipeline {
                                 resourceType: 'hpa'
                             ])
 
-                            echo "Resources for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
+                            echo "Resources before patch for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
                         }
                     }
                 }
@@ -339,13 +339,17 @@ pipeline {
                         script{
                             echo "Changing HPA associated"
                             def hpa = env.FILTERED_HPA.trim()
-                            writeFile file: "patch-${hpa}.json", text: env.HPA_JSON_RESPONSE
+                            def patchFile = "patch-${hpa}.json"
+                            writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
+
+                            echo "=== Content of ${patchFile} ==="
+                            sh "cat ${patchFile}"
 
                             kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: hpa,
                                 resourceType: 'hpa',
-                                patchFile: "patch-${hpa}.json"
+                                patchFile: patchFile
 
                             ])
 
@@ -486,13 +490,13 @@ pipeline {
                     steps {
                         script {
                             echo "=== RESOURCES after APPLY/PATCH - HPA ==="
-                            env.HPA_JSON_RESPONSE = kubectl.checkResourcesHPA([
+                            env.HPA_JSON_RESPONSE_AFTER = kubectl.checkResourcesHPA([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: env.FILTERED_HPA.trim(),
                                 resourceType: 'hpa'
                             ])
 
-                            echo "Resources for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
+                            echo "Resources for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE_AFTER}"
                         }
                     }
                 }

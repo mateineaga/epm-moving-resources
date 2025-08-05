@@ -331,8 +331,8 @@ pipeline {
                                 resourceType: 'hpa',
                                 patchFile: "patch-${hpa}.json"
 
+                            ])
                             echo "Resources for HPA ${hpa}: ${hpaResources}"
-                        ])
                         }
                     }
                 }

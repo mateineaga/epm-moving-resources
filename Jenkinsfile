@@ -108,16 +108,15 @@ pipeline {
                     steps {
                         script {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
-                            echo "Debug - Service Name: ${env.SERVICE_NAME}"
                             
                             env.DEPLOYMENTS=kubectl.getResources([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            env.FILTERED_DEPLOYMENTS=kubectl.filterDeploymentsByVersion([
+                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.DEPLOYMENTS}", 
-                                version: "${env.RELEASE_VERSION}"
+                                identifier: "${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
@@ -133,9 +132,9 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            env.FILTERED_HPA=kubectl.filterHPAByVersion([
+                            env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 
-                                version: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
+                                identifier: "${env.SERVICE_NAME}.replace("-svc","-dep")-${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered HPA are: ${env.FILTERED_HPA}"
@@ -236,6 +235,14 @@ pipeline {
                         ])
                         echo "Resources for deployment ${deployment}: ${resources}"
                     }
+
+                    env.HPA_JSON_RESPONSE = kubectl.checkResources([
+                        namespace: "${env.TARGET_NAMESPACE}",
+                        resourceName: env.FILTERED_HPA.trim(),
+                        resourceType: 'hpa'
+                    ])
+
+                    echo "Resources for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
                 }
             }
         }

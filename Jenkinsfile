@@ -313,7 +313,7 @@ pipeline {
                         }
                     }
                 }
-            }
+            
 
                 stage('Patching the target hpa!'){
                     when {

@@ -155,7 +155,7 @@ pipeline {
             parallel{
                 stage('Generating patch update in JSON form, from source deployment!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true }
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true }
                     }
                     steps{
                         script{
@@ -171,7 +171,7 @@ pipeline {
 
                 stage('Generating patch update in JSON form, from source hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.HPA == 'hpa'}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == 'hpa'}
                     }
                     steps{
                         script{
@@ -190,7 +190,7 @@ pipeline {
             parallel{
                 stage('Backing up for target deployment'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
 
                     steps {
@@ -220,7 +220,7 @@ pipeline {
             
                 stage('Backing up for target hpa'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.HPA == true}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
                     }
                     steps{
                         script{
@@ -289,7 +289,7 @@ pipeline {
             parallel{
                 stage('Patching the target deployment!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -313,7 +313,7 @@ pipeline {
 
                 stage('Patching the target hpa!'){
                     when {
-                        expression { params.ACTION == 'apply' && env.IS_RELEASE == true && params.DEPLOYMENT == true}
+                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
                     steps{
                         script{
@@ -440,7 +440,7 @@ pipeline {
 
         stage('Debug - Check Resources After') {
             // when {
-            //     expression { env.IS_RELEASE == true }
+            //     expression { params.IS_RELEASE == true }
             // }
             parallel{
                 stage('Debug for target deployment'){

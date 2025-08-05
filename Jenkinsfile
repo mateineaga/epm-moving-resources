@@ -292,13 +292,13 @@ pipeline {
                     steps {
                         script {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - HPA ==="
-                            env.HPA_JSON_RESPONSE = kubectl.checkResourcesHPA([
+                            env.HPA_JSON_RESPONSE_BEFORE = kubectl.checkResourcesHPA([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: env.FILTERED_HPA.trim(),
                                 resourceType: 'hpa'
                             ])
 
-                            echo "Resources before patch for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE}"
+                            echo "Resources before patch for HPA ${env.FILTERED_HPA.trim()}: ${env.HPA_JSON_RESPONSE_BEFORE}"
                         }
                     }
                 }
@@ -346,7 +346,7 @@ pipeline {
                             echo env.HPA_JSON_RESPONSE
                             
                             writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
-                            
+
                             echo "=== Content of ${patchFile} ==="
                             sh "cat ${patchFile}"
 

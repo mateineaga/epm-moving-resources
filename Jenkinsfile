@@ -259,7 +259,7 @@ pipeline {
                         script {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - DEPLOYMENTS ==="
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                                def resources = kubectl.checkResources([
+                                def resources = kubectl.checkResourcesDeployment([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
                                     resourceType: 'deployment'
@@ -277,7 +277,7 @@ pipeline {
                     steps {
                         script {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - HPA ==="
-                            env.HPA_JSON_RESPONSE = kubectl.checkResources([
+                            env.HPA_JSON_RESPONSE = kubectl.checkResourcesHPA([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: env.FILTERED_HPA.trim(),
                                 resourceType: 'hpa'

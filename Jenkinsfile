@@ -375,17 +375,14 @@ pipeline {
                         
                             // Pentru fiecare deployment
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                                // Găsim backup-ul corespunzător din artefacte
                                 def artifactPattern = "backup-${deployment}-*.json"
                                 
-                                // Copiem artefactul din build-ul anterior folosind lastSuccessful
                                 copyArtifacts(
                                     projectName: env.JOB_NAME,
                                     selector: lastSuccessful(),
                                     filter: artifactPattern
                                 )
                                 
-                                // Verificăm dacă există fișierul de backup
                                 def backupFile = sh(
                                     script: "ls -1 ${artifactPattern} | head -1",
                                     returnStdout: true
@@ -401,7 +398,6 @@ pipeline {
                                     def revertFileName = "revert-${deployment}.json"
                                     writeFile file: revertFileName, text: revertPatch
                                     
-                                    // Aplicăm patch-ul
                                     kubectl.patchUpdateFileJSON([
                                         namespace: env.TARGET_NAMESPACE,
                                         resourceName: deployment,

@@ -456,7 +456,7 @@ pipeline {
                         script{
                             echo " RESOURCES AFTER PATCH - DEPLOYMENT"
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                                def resources = kubectl.checkResources([
+                                def resources = kubectl.checkResourcesDeployment([
                                     namespace: env.TARGET_NAMESPACE,
                                     resourceName: deployment,
                                     resourceType: 'deployment'
@@ -475,7 +475,7 @@ pipeline {
                         script{
                             echo "RESOURCES AFTER PATCH - HPA"
                             def hpa = env.FILTERED_HPA.trim()
-                            def hpaResources = kubectl.checkResources([
+                            def hpaResources = kubectl.checkResourcesHPA([
                                 namespace: env.TARGET_NAMESPACE,
                                 resourceName: hpa,
                                 resourceType: 'hpa'

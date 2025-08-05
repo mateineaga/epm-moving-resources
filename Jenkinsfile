@@ -206,59 +206,41 @@ pipeline {
         }
 
         stage('Backup Current State') {
-            parallel{
-                stage('Backing up for target deployment'){
+            parallel {
+                stage('Backing up for target deployment') {
                     when {
                         expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
                     }
-
                     steps {
                         script {
-                            echo "=== BACKING UP CURRENT STATE ==="
-                            def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                            def backupFileName = "backup-${env.FILTERED_DEPLOYMENTS.trim()}-${timestamp}.json"
-
-                            def jsonResponse = kubectl.getPatchJsonResponseDeployment([
-                                namespace: "${TARGET_NAMESPACE}",
-                                resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
+                            kubectl.backupResource([
+                                namespace: env.TARGET_NAMESPACE,
+                                resourceName: env.FILTERED_DEPLOYMENTS.trim(),
                                 resourceType: 'deployment',
-                                releaseVersion: "${env.RELEASE_VERSION}"
+                                backupPrefix: 'backup',
+                                releaseVersion: env.RELEASE_VERSION,
+                                serviceName: env.SERVICE_NAME
                             ])
-                                
-                            // Salvăm backup-ul ca artifact
-                            writeFile file: backupFileName, text: jsonResponse
-                            archiveArtifacts artifacts: backupFileName
-                                
-                            echo "Deployment Backup saved as artifact: ${backupFileName}"
-
                         }
                     }
                 }
             
-                stage('Backing up for target hpa'){
+                stage('Backing up for target hpa') {
                     when {
                         expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
                     }
-                    steps{
-                        script{
-                            def hpa = env.FILTERED_HPA.trim()
-                            def timestamp = new Date().format('yyyyMMdd-HHmmss')
-                            def hpaBackupFileName = "backup-hpa-${hpa}-${timestamp}.json"
-
-                            def hpaJsonResponse = kubectl.getHPAPatchJsonResponse([
-                                namespace: "${TARGET_NAMESPACE}",
-                                resourceName: hpa
+                    steps {
+                        script {
+                            kubectl.backupResource([
+                                namespace: env.TARGET_NAMESPACE,
+                                resourceName: env.FILTERED_HPA.trim(),
+                                resourceType: 'hpa',
+                                backupPrefix: 'backup-hpa'
                             ])
-
-                            writeFile file: hpaBackupFileName, text: hpaJsonResponse
-                            archiveArtifacts artifacts: hpaBackupFileName
-
-                            echo "HPA Backup saved as artifact: ${hpaBackupFileName}"
                         }
                     }
                 }
             }
-            
         }
         
 
@@ -318,7 +300,7 @@ pipeline {
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: env.FILTERED_DEPLOYMENTS.trim(),
                                 resourceType: 'deployment',
-                                patchFile: "patch-${deployment}.json"
+                                patchFile: "patch-${env.FILTERED_DEPLOYMENTS.trim()}.json"
                             ])
                         }
                     }

@@ -340,8 +340,6 @@ pipeline {
             
         }
 
-        
-
         stage('Reverting the resources to initial values.'){
             when {
                 expression { params.ACTION == 'revert' }
@@ -408,33 +406,34 @@ pipeline {
                     steps{
                         script{
                             def hpa = env.FILTERED_HPA.trim()
-                        def hpaArtifactPattern = "backup-hpa-${hpa}-*.json"
+                            def hpaArtifactPattern = "backup-hpa-${hpa}-*.json"
 
-                        copyArtifacts(
-                            projectName: env.JOB_NAME,
-                            selector: lastSuccessful(),
-                            filter: hpaArtifactPattern
-                        )
+                            copyArtifacts(
+                                projectName: env.JOB_NAME,
+                                selector: lastSuccessful(),
+                                filter: hpaArtifactPattern
+                            )
 
-                        def hpaBackupFile = sh(
-                            script: "ls -1 ${hpaArtifactPattern} | head -1",
-                            returnStdout: true
-                        ).trim()
+                            def hpaBackupFile = sh(
+                                script: "ls -1 ${hpaArtifactPattern} | head -1",
+                                returnStdout: true
+                            ).trim()
 
-                        if (hpaBackupFile) {
-                            echo "Found backup for HPA ${hpa}: ${hpaBackupFile}"
-                            def hpaRevertPatch = readFile(hpaBackupFile)
-                            def hpaRevertFileName = "revert-hpa-${hpa}.json"
-                            writeFile file: hpaRevertFileName, text: hpaRevertPatch
+                            if (hpaBackupFile) {
+                                echo "Found backup for HPA ${hpa}: ${hpaBackupFile}"
+                                def hpaRevertPatch = readFile(hpaBackupFile)
+                                def hpaRevertFileName = "revert-hpa-${hpa}.json"
+                                writeFile file: hpaRevertFileName, text: hpaRevertPatch
 
-                            kubectl.patchUpdateFileJSON([
-                                namespace: env.TARGET_NAMESPACE,
-                                resourceName: hpa,
-                                resourceType: 'hpa',
-                                patchFile: hpaRevertFileName
-                            ])
+                                kubectl.patchUpdateFileJSON([
+                                    namespace: env.TARGET_NAMESPACE,
+                                    resourceName: hpa,
+                                    resourceType: 'hpa',
+                                    patchFile: hpaRevertFileName
+                                ])
 
-                            echo "Reverted HPA: ${hpa}"
+                                echo "Reverted HPA: ${hpa}"
+                            }
                         }
                     }
                 }

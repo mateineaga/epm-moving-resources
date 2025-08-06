@@ -105,14 +105,6 @@ pipeline {
                         error "No repository configuration found for service: ${params.SERVICE_NAME}"
                     }
 
-                    echo """
-                        Repository details:
-                        - URL: ${repoConfig.url}
-                        - Branch: ${repoConfig.branch}
-                        - Path: ${repoConfig.path}
-                    """
-
-                    // Checkout
                     def checkoutResult = checkout([
                         $class: 'GitSCM',
                         branches: [[name: repoConfig.branch]],
@@ -122,48 +114,11 @@ pipeline {
                         ]]
                     ])
 
-                    // Verifică rezultatul checkout-ului
-                    echo "Checkout result: ${checkoutResult}"
-                    
-                    // // Verifică git status
-                    // def gitStatus = sh(script: 'git status', returnStdout: true)
-                    // echo "Git status: ${gitStatus}"
 
                     // Setează path-urile
                     env.SERVICE_PATH = repoConfig.path
                     env.VALUES_FILE = "${env.SERVICE_PATH}/values-${params.SOURCE_ENV}-${params.BANNER}.yaml"
-                    
-                    // Verifică structura repository-ului
-                    sh """
-                        echo "Workspace contents:"
-                        ls -la
-                        
-                        echo "\nService path contents:"
-                        if [ -d "${env.SERVICE_PATH}" ]; then
-                            ls -la "${env.SERVICE_PATH}"
-                        else
-                            echo "Service path ${env.SERVICE_PATH} does not exist!"
-                        fi
-                        
-                        echo "\nLooking for values file:"
-                        if [ -f "${env.VALUES_FILE}" ]; then
-                            echo "Found values file:"
-                            cat "${env.VALUES_FILE}"
-                        else
-                            echo "Values file ${env.VALUES_FILE} not found!"
-                        fi
-                    """
 
-                    // Verificări finale
-                    if (!fileExists(env.VALUES_FILE)) {
-                        error """
-                            Values file not found!
-                            Workspace: ${pwd()}
-                            Service path: ${env.SERVICE_PATH}
-                            Values file path: ${env.VALUES_FILE}
-                            Directory contents: ${sh(script: 'ls -R', returnStdout: true)}
-                        """
-                    }
                 }
             }
         }
@@ -228,20 +183,17 @@ pipeline {
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
-
                             echo "Non filtered target HPA are: ${env.HPA}"
 
                             env.FILTERED_HPA=kubectl.filterResourcesByIdentifier([
                                 resources: "${env.HPA}", 
                                 identifier: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
                             ])
-
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
 
                             env.HPA_PATCH = kubectl.getHPAPatchJsonResponse(
                                 valuesFile: env.VALUES_FILE
                             )
-
                             echo "Patch which will be applied to HPA: ${env.HPA_PATCH}"
                         }
                     }
@@ -259,7 +211,7 @@ pipeline {
                         script {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - DEPLOYMENTS ==="
                             
-                            env.FLITERED_DEPLOYMENTS.split('\n').each{deployment ->
+                            env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
                                 def response = kubectl.checkResourcesDeployment([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
@@ -280,7 +232,7 @@ pipeline {
                         script {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - HPA ==="
 
-                            env.FLITERED_HPA.split('\n').each{hpa ->
+                            env.FILTERED_HPA.split('\n').each{hpa ->
                                 def response = kubectl.checkResourcesHPA([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: hpa

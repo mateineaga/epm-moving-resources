@@ -64,36 +64,17 @@ pipeline {
     environment {
         SOURCE_NAMESPACE = "${BANNER}-${SOURCE_ENV}-space"
         TARGET_NAMESPACE = "${BANNER}-${TARGET_ENV}-space"
-        SERVICE_REPOS = [
-            graphql: [
-                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-graphql',
-                branch: 'develop',
-                path: 'pipeline/graphql-service'
-            ],
-            store: [
-                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-fe-stores',
-                branch: 'develop',
-                path: 'pipeline/store-service'
-            ],
-            'bloomreach-authoring': [
-                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-bloomreach-cms',
-                branch: 'develop',
-                path: 'pipeline/bloomreach-service'
-            ],
-            'bloomreach-delivery': [
-                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-bloomreach-cms',
-                branch: 'develop',
-                path: 'pipeline/bloomreach-service'
-            ],
-            hybris: [
-                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-hybris',
-                branch: 'develop',
-                path: 'pipeline/hybris-service'
-            ]
-        ]
     }
 
     stages{
+        stage('Initialize') {
+            steps {
+                script {
+                    env.SERVICE_REPOS = getServiceRepos()
+                }
+            }
+        }
+        
         stage('Checking parameters'){
             steps{
                 echo "Banner is: ${BANNER}"

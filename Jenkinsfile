@@ -125,9 +125,9 @@ pipeline {
                     // Verifică rezultatul checkout-ului
                     echo "Checkout result: ${checkoutResult}"
                     
-                    // Verifică git status
-                    def gitStatus = sh(script: 'git status', returnStdout: true)
-                    echo "Git status: ${gitStatus}"
+                    // // Verifică git status
+                    // def gitStatus = sh(script: 'git status', returnStdout: true)
+                    // echo "Git status: ${gitStatus}"
 
                     // Setează path-urile
                     env.SERVICE_PATH = repoConfig.path
@@ -203,7 +203,7 @@ pipeline {
 
                             env.FILTERED_DEPLOYMENTS = kubectl.filterResourcesByIdentifier([
                                 resources: "${deployments}", 
-                                identifier: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
+                                identifier: "${env.SERVICE_NAME}-dep-${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
@@ -237,20 +237,6 @@ pipeline {
                             ])
 
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
-
-                            // env.SOURCE_HPA=kubectl.getResources([
-                            //     resources: 'hpa', 
-                            //     namespace: "${env.SOURCE_NAMESPACE}"
-                            // ])
-
-                            // echo "All source HPA to extract specs from are: ${env.SOURCE_HPA}"
-
-                            // env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
-                            //     resources: "${env.SOURCE_HPA}", 
-                            //     identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
-                            // ])
-
-                            // echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
 
                             env.HPA_PATCH = kubectl.getHPAPatchJsonResponse(
                                 valuesFile: env.VALUES_FILE

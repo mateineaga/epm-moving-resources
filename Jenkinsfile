@@ -281,12 +281,11 @@ pipeline {
                             echo "=== RESOURCES BEFORE APPLY/PATCH - HPA ==="
 
                             env.FLITERED_HPA.each{hpa ->
-                                def response = kubectl.checkResourcesDeployment([
+                                def response = kubectl.checkResourcesHPA([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: hpa,
-                                    resourceType: 'hpa'
+                                    resourceName: hpa
                                 ])
-                                echo "Resources before patch for target hpa ${hpa}: ${response}"
+                                echo "Resources AFTER patch for target hpa ${hpa}: ${response}"
                             }
                         }
                     }

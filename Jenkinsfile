@@ -98,7 +98,8 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 script {
-                    def repoConfig = env.SERVICE_REPOS[params.SERVICE_NAME]
+                    def serviceRepos = getServiceRepos()
+                    def repoConfig = serviceRepos.get(params.SERVICE_NAME)
 
                     checkout([
                         $class: 'GitSCM',

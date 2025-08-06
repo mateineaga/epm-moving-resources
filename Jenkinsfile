@@ -248,62 +248,6 @@ pipeline {
                 }
             }
         }
-        
-        
-        // De eliminat backup
-
-        stage('Backup Current State') {
-            parallel {
-                stage('Backing up for target deployment') {
-                    when {
-                        expression { params.ACTION == 'apply' && params.DEPLOYMENT == true}
-                    }
-                    steps {
-                        script {
-                            env.FLITERED_DEPLOYMENTS.each{deployment ->
-                                def backup = kubectl.backupResource([
-                                    namespace: env.TARGET_NAMESPACE,
-                                    resourceName: deployment,
-                                    resourceType: 'deployment',
-                                    backupPrefix: 'backup',
-                                    releaseVersion: env.RELEASE_VERSION,
-                                    serviceName: env.SERVICE_NAME
-                                ])
-                                
-                                writeFile file: backup.fileName, text: backup.content
-                                archiveArtifacts artifacts: backup.fileName
-                                
-                                echo "Deployment backup saved as artifact: ${backup.fileName}"
-                            }
-                        }
-                    }
-                }
-            
-                stage('Backing up for target hpa') {
-                    when {
-                        expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
-                    }
-                    steps {
-                        script {
-                                env.FLITERED_HPA.each{hpa ->
-                                    def backup = kubectl.backupResource([
-                                        namespace: env.TARGET_NAMESPACE,
-                                        resourceName: hpa,
-                                        resourceType: 'hpa',
-                                        backupPrefix: 'backup-hpa'
-                                    ])
-                                    
-                                    writeFile file: backup.fileName, text: backup.content
-                                    archiveArtifacts artifacts: backup.fileName
-                                    
-                                    echo "HPA backup saved as artifact: ${backup.fileName}"
-                                }
-                            }
-                        }
-                    }
-            }
-        }
-        
 
         stage('Debug - Check Resources Before') {
             parallel {
@@ -351,55 +295,59 @@ pipeline {
         }
 
 
-        // stage('Promoting the candidate'){
-        //     parallel{
-        //         stage('Patching the target deployment!'){
-        //             when {
-        //                 expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true}
-        //             }
-        //             steps{
-        //                 script{
-        //                     echo "Allocating more resources to deployments"
+        stage('Patching'){
+            parallel{
+                stage('Patching the target deployments!'){
+                    when {
+                        expression { params.ACTION == 'apply' && params.DEPLOYMENT == true}
+                    }
+                    steps{
+                        script{
+                            echo "Patching deployment"
+                            def patchFile = "patch-deployment.json"
+                            writeFile file: patchFile, text: env.DEP_PATCH
 
-        //                     writeFile file: "patch-${env.FILTERED_DEPLOYMENTS.trim()}.json", text: env.DEPLOYMENT_JSON_RESPONSE
+                            echo "Patch file: ${patchFile}"
 
-        //                     kubectl.patchUpdateFileJSON([
-        //                         namespace: "${env.TARGET_NAMESPACE}",
-        //                         resourceName: env.FILTERED_DEPLOYMENTS.trim(),
-        //                         resourceType: 'deployment',
-        //                         patchFile: "patch-${env.FILTERED_DEPLOYMENTS.trim()}.json"
-        //                     ])
-        //                 }
-        //             }
-        //         }
+                            env.FLITERED_DEPLOYMENTS.each{deployment -> 
+                                kubectl.patchUpdateFileJSON([
+                                namespace: "${env.TARGET_NAMESPACE}",
+                                resourceName: deployment,
+                                resourceType: 'deployment',
+                                patchFile: patchFile
+                                ])
+                            }
+                        }
+                    }
+                }
             
 
-        //         stage('Patching the target hpa!'){
-        //             when {
-        //                 expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
-        //             }
-        //             steps{
-        //                 script{
-        //                     echo "Changing HPA associated"
-        //                     def hpa = env.FILTERED_HPA.trim()
-        //                     def patchFile = "patch-${hpa}.json"
+                stage('Patching the target hpa!'){
+                    when {
+                        expression { params.ACTION == 'apply' && params.HPA == true}
+                    }
+                    steps{
+                        script{
+                            echo "Patching HPA"
+                            def patchFile = "patch-hpa.json"
                             
-        //                     writeFile file: patchFile, text: env.HPA_JSON_RESPONSE
+                            writeFile file: patchFile, text: env.HPA_PATCH
 
-        //                     kubectl.patchUpdateFileJSON([
-        //                         namespace: "${env.TARGET_NAMESPACE}",
-        //                         resourceName: hpa,
-        //                         resourceType: 'hpa',
-        //                         patchFile: patchFile
+                            echo "Patch file: ${patchFile}"
 
-        //                     ])
-
-        //                 }
-        //             }
-        //         }
-        //     }
-            
-        // }
+                            env.FLITERED_HPA.each{hpa -> 
+                                kubectl.patchUpdateFileJSON([
+                                namespace: "${env.TARGET_NAMESPACE}",
+                                resourceName: hpa,
+                                resourceType: 'hpa',
+                                patchFile: patchFile
+                                ])
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         stage('Reverting the resources to initial values.'){
             when {

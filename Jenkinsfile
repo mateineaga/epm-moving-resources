@@ -74,7 +74,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Checking parameters'){
             steps{
                 echo "Banner is: ${BANNER}"
@@ -135,40 +135,48 @@ pipeline {
             parallel{
                 stage('Identifying deployments and generating JSON patch') {
                     when {
-                            expression { params.DEPLOYMENT == true }
+                        expression { params.DEPLOYMENT == true }
                     }
                     steps {
                         script {
-                            
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
                                 
-                            env.DEPLOYMENTS=kubectl.getResources([
+                            env.DEPLOYMENTS = kubectl.getResources([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
                             echo "Non filtered deployments are: ${env.DEPLOYMENTS}"
 
-                            env.FILTERED_DEPLOYMENTS=kubectl.filterResourcesByIdentifier([
+                            env.FILTERED_DEPLOYMENTS = kubectl.filterResourcesByIdentifier([
                                 resources: "${env.DEPLOYMENTS}", 
                                 identifier: "${env.RELEASE_VERSION}"
                             ])
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
 
-                            // env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
-                            //     env.DEPLOYMENT_JSON_RESPONSE = kubectl.getPatchJsonResponseDeployment([
-                            //         namespace: "${SOURCE_NAMESPACE}",
-                            //         resourceName: deployment
-                            //     ])
-                            //     echo "JSON RESPONSE for source deployment ${deployment}, which will be later patched to target deployment ${env.DEPLOYMENT_JSON_RESPONSE}"
-                            // }
+                            // env.patchResponses = getPatchJsonResponseDeployment(
+                            //     valuesFile: env.VALUES_FILE,
+                            //     deployments: env.FILTERED_DEPLOYMENTS
+                            // )
 
-                            // env.DEPLOYMENT_JSON_RESPONSE = kubectl.getPatchJsonResponseDeployment([
-                            //     namespace: "${SOURCE_NAMESPACE}",
-                            //     resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
-                            //     releaseVersion: "${env.RELEASE_VERSION}"
-                            // ])
+                            
+
+                            // Procesează fiecare deployment și patch
+                            def deployments = env.FILTERED_DEPLOYMENTS.split('\n')
+
+
+                            def patches = getPatchJsonResponseDeployment(
+                                valuesFile: env.VALUES_FILE,
+                                deployments: env.FILTERED_DEPLOYMENTS
+                            )
+
+                            // Afișează patch-urile pentru fiecare deployment
+                            patches.each { deployment, patch ->
+                                echo "Patch for deployment ${deployment}:"
+                                echo patch
+                            }
+                            
                         }
                     }
                 }

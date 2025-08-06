@@ -52,7 +52,7 @@ pipeline {
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['asm-graphql-svc', 'hybris-svc', 'kiosk-svc'], // graphql, store, bloomreach(authoring, delivery)
+            choices: ['graphql', 'store', 'bloomreach-authoring',  'bloomreach-delivery', 'hybris' ], // graphql, store, bloomreach(authoring, delivery)
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -64,6 +64,33 @@ pipeline {
     environment {
         SOURCE_NAMESPACE = "${BANNER}-${SOURCE_ENV}-space"
         TARGET_NAMESPACE = "${BANNER}-${TARGET_ENV}-space"
+        SERVICE_REPOS = [
+            graphql: [
+                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-graphql',
+                branch: 'develop',
+                path: 'pipeline/graphql-service'
+            ],
+            store: [
+                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-fe-stores',
+                branch: 'develop',
+                path: 'pipeline/store-service'
+            ],
+            'bloomreach-authoring': [
+                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-bloomreach-cms',
+                branch: 'develop',
+                path: 'pipeline/bloomreach-service'
+            ],
+            'bloomreach-delivery': [
+                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-bloomreach-cms',
+                branch: 'develop',
+                path: 'pipeline/bloomreach-service'
+            ],
+            hybris: [
+                url: 'https://github.com/RoyalAholdDelhaize/eu-digital-hybris',
+                branch: 'develop',
+                path: 'pipeline/hybris-service'
+            ]
+        ]
     }
 
     stages{
@@ -87,13 +114,33 @@ pipeline {
             }
         }
 
+        stage('Checkout Code') {
+            steps {
+                script {
+                    def repoConfig = env.SERVICE_REPOS[params.SERVICE_NAME]
+
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: repoConfig.branch]],
+                        userRemoteConfigs: [[
+                            url: repoConfig.url,
+                            credentialsId: 'GithubCredentials'
+                        ]]
+                    ])
+
+                    env.SERVICE_PATH = repoConfig.path
+                    env.VALUES_FILE = "values-${params.SOURCE_ENV}-${params.BANNER}.yaml"
+                }
+            }
+        }
+        
+
         stage('Get Release Version') {
             steps {
                 script {
                     def RELEASE_VERSION = kubectl.getReleaseVersion([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
-                        resourceType: 'dr',
                         release: env.IS_RELEASE
                     ])
                     echo "Version of release is ${RELEASE_VERSION}!"

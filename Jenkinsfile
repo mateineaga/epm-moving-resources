@@ -162,12 +162,6 @@ pipeline {
                             ])
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
-
-                            env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment(
-                                valuesFile: env.VALUES_FILE
-                            )
-
-                            echo "Patch which will be applied to deployments: ${env.DEP_PATCH}"
                             
                         }
                     }
@@ -190,11 +184,6 @@ pipeline {
                                 identifier: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
                             ])
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
-
-                            env.HPA_PATCH = kubectl.getHPAPatchJsonResponse(
-                                valuesFile: env.VALUES_FILE
-                            )
-                            echo "Patch which will be applied to HPA: ${env.HPA_PATCH}"
                         }
                     }
                 }
@@ -253,18 +242,23 @@ pipeline {
                     }
                     steps{
                         script{
-                            echo "Patching deployment"
-                            def patchFile = "patch-deployment.json"
-                            writeFile file: patchFile, text: env.DEP_PATCH
+                            env.FILTERED_DEPLOYMENTS.split('\n').each { deployment -> 
+                                env.DEP_PATCH = getPatchJsonResponseDeployment([
+                                    valuesFile: env.VALUES_FILE,
+                                    deployment: deployment
+                                ])
 
-                            echo "Patch file: ${patchFile}"
+                                echo "Generated patch for deployment ${deployment} with container name ${deployment.replaceAll('-dep-[0-9.-]+$', '')}"
 
-                            env.FILTERED_DEPLOYMENTS.split('\n').each{deployment -> 
+                                def patchFile = "patch-${deployment}.json"
+                                writeFile file: patchFile, text: env.DEP_PATCH
+                                echo "Written patch to file: ${patchFile}"
+
                                 kubectl.patchUpdateFileJSON([
-                                namespace: "${env.TARGET_NAMESPACE}",
-                                resourceName: deployment,
-                                resourceType: 'deployment',
-                                patchFile: patchFile
+                                    namespace: env.TARGET_NAMESPACE,
+                                    resourceName: deployment,
+                                    resourceType: 'deployment',
+                                    patchFile: patchFile
                                 ])
                             }
                         }

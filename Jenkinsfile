@@ -236,7 +236,7 @@ pipeline {
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: hpa
                                 ])
-                                echo "Resources AFTER patch for target hpa ${hpa}: ${response}"
+                                echo "Resources before patch for target hpa ${hpa}: ${response}"
                             }
                         }
                     }
@@ -259,7 +259,7 @@ pipeline {
 
                             echo "Patch file: ${patchFile}"
 
-                            env.FLITERED_DEPLOYMENTS.split('\n').each{deployment -> 
+                            env.FILTERED_DEPLOYMENTS.split('\n').each{deployment -> 
                                 kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: deployment,
@@ -285,7 +285,7 @@ pipeline {
 
                             echo "Patch file: ${patchFile}"
 
-                            env.FLITERED_HPA.split('\n').each{hpa -> 
+                            env.FILTERED_HPA.split('\n').each{hpa -> 
                                 kubectl.patchUpdateFileJSON([
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 resourceName: hpa,
@@ -352,7 +352,7 @@ pipeline {
                         script {
                             echo "=== RESOURCES AFTER APPLY/PATCH - DEPLOYMENTS ==="
                             
-                            env.FLITERED_DEPLOYMENTS.split('\n').each{deployment ->
+                            env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
                                 def response = kubectl.checkResourcesDeployment([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment
@@ -372,7 +372,7 @@ pipeline {
                         script {
                             echo "=== RESOURCES AFTER APPLY/PATCH - HPA ==="
 
-                            env.FLITERED_HPA.split('\n').each{hpa ->
+                            env.FILTERED_HPA.split('\n').each{hpa ->
                                 def response = kubectl.checkResourcesHPA([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: hpa

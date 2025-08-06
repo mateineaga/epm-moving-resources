@@ -243,7 +243,7 @@ pipeline {
                     steps{
                         script{
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment -> 
-                                env.DEP_PATCH = getPatchJsonResponseDeployment([
+                                env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment([
                                     valuesFile: env.VALUES_FILE,
                                     deployment: deployment
                                 ])

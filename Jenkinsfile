@@ -214,8 +214,7 @@ pipeline {
                             env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
                                 def response = kubectl.checkResourcesDeployment([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: deployment,
-                                    resourceType: 'deployment'
+                                    resourceName: deployment
                                 ])
                                 echo "Resources before patch for target deployment ${deployment}: ${response}"
                             }

@@ -156,7 +156,7 @@ pipeline {
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
 
-                            env.DEP_PATCH = getPatchJsonResponseDeployment(
+                            env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment(
                                 valuesFile: env.VALUES_FILE
                             )
 
@@ -200,7 +200,7 @@ pipeline {
 
                             // echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
 
-                            env.HPA_PATCH = getHPAPatchJsonResponse(
+                            env.HPA_PATCH = kubectl.getHPAPatchJsonResponse(
                                 valuesFile: env.VALUES_FILE
                             )
 

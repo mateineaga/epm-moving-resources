@@ -120,12 +120,12 @@ pipeline {
         stage('Get Release Version') {
             steps {
                 script {
-                    def RELEASE_VERSION = kubectl.getReleaseVersion([
+                    env.RELEASE_VERSION = kubectl.getReleaseVersion([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
-                        release: env.IS_RELEASE
+                        release: params.IS_RELEASE
                     ])
-                    echo "Version of release is ${RELEASE_VERSION}!"
+                    echo "Version of release is ${env.RELEASE_VERSION}!"
                 }
             }
         }
@@ -156,27 +156,11 @@ pipeline {
 
                             echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
 
-                            // env.patchResponses = getPatchJsonResponseDeployment(
-                            //     valuesFile: env.VALUES_FILE,
-                            //     deployments: env.FILTERED_DEPLOYMENTS
-                            // )
-
-                            
-
-                            // Procesează fiecare deployment și patch
-                            def deployments = env.FILTERED_DEPLOYMENTS.split('\n')
-
-
-                            def patches = getPatchJsonResponseDeployment(
-                                valuesFile: env.VALUES_FILE,
-                                deployments: env.FILTERED_DEPLOYMENTS
+                            env.DEP_PATCH = getPatchJsonResponseDeployment(
+                                valuesFile: env.VALUES_FILE
                             )
 
-                            // Afișează patch-urile pentru fiecare deployment
-                            patches.each { deployment, patch ->
-                                echo "Patch for deployment ${deployment}:"
-                                echo patch
-                            }
+                            echo "Patch which will be applied to deployments: ${env.DEP_PATCH}"
                             
                         }
                     }
@@ -202,26 +186,25 @@ pipeline {
 
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
 
-                            env.SOURCE_HPA=kubectl.getResources([
-                                resources: 'hpa', 
-                                namespace: "${env.SOURCE_NAMESPACE}"
-                            ])
-
-                            echo "All source HPA to extract specs from are: ${env.SOURCE_HPA}"
-
-                            env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
-                                resources: "${env.SOURCE_HPA}", 
-                                identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
-                            ])
-
-                            echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
-
-                            // env.HPA_JSON_RESPONSE = kubectl.getHPAPatchJsonResponse([
-                            //     namespace: "${SOURCE_NAMESPACE}",
-                            //     resourceName: env.SOURCE_FILTERED_HPA.trim()
+                            // env.SOURCE_HPA=kubectl.getResources([
+                            //     resources: 'hpa', 
+                            //     namespace: "${env.SOURCE_NAMESPACE}"
                             // ])
 
-                            // echo "JSON RESPONSE for source hpa, which will be later patched to target hpa ${env.HPA_JSON_RESPONSE}"
+                            // echo "All source HPA to extract specs from are: ${env.SOURCE_HPA}"
+
+                            // env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
+                            //     resources: "${env.SOURCE_HPA}", 
+                            //     identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
+                            // ])
+
+                            // echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
+
+                            env.HPA_PATCH = getHPAPatchJsonResponse(
+                                valuesFile: env.VALUES_FILE
+                            )
+
+                            echo "Patch which will be applied to HPA: ${env.HPA_PATCH}"
                         }
                     }
                 }
@@ -229,57 +212,6 @@ pipeline {
         }
         
         
-
-        // stage('Getting JSON files for HPA and deployments'){
-        //     parallel{
-        //         stage('Generating patch update in JSON form, from source deployment!'){
-        //             when {
-        //                 expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.DEPLOYMENT == true }
-        //             }
-        //             steps{
-        //                 script{
-        //                     env.DEPLOYMENT_JSON_RESPONSE = kubectl.getPatchJsonResponseDeployment([
-        //                         namespace: "${SOURCE_NAMESPACE}",
-        //                         resourceName: "${SERVICE_NAME}".replace("-svc","-dep"),
-        //                         releaseVersion: "${env.RELEASE_VERSION}"
-        //                     ])
-        //                     echo "JSON RESPONSE for source deployment, which will be later patched to target deployment ${env.DEPLOYMENT_JSON_RESPONSE}"
-        //                 }
-        //             }
-        //         }
-
-        //         stage('Generating patch update in JSON form, from source hpa!'){
-        //             when {
-        //                 expression { params.ACTION == 'apply' && params.IS_RELEASE == true && params.HPA == true}
-        //             }
-        //             steps{
-        //                 script{
-        //                     env.SOURCE_HPA=kubectl.getResources([
-        //                         resources: 'hpa', 
-        //                         namespace: "${env.SOURCE_NAMESPACE}"
-        //                     ])
-
-        //                     echo "All source HPA to extract specs from are: ${env.SOURCE_HPA}"
-
-        //                     env.SOURCE_FILTERED_HPA=kubectl.filterResourcesByIdentifier([
-        //                         resources: "${env.SOURCE_HPA}", 
-        //                         identifier: "${env.SERVICE_NAME.replace("-svc","")}-${env.RELEASE_VERSION}"
-        //                     ])
-
-        //                     echo "Filtered source HPA to extract specs from are: ${env.SOURCE_FILTERED_HPA}"
-
-        //                     env.HPA_JSON_RESPONSE = kubectl.getHPAPatchJsonResponse([
-        //                         namespace: "${SOURCE_NAMESPACE}",
-        //                         resourceName: env.SOURCE_FILTERED_HPA.trim()
-        //                     ])
-
-        //                     echo "JSON RESPONSE for source hpa, which will be later patched to target hpa ${env.HPA_JSON_RESPONSE}"
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
         // De eliminat backup
 
         // stage('Backup Current State') {

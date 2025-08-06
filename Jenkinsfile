@@ -142,15 +142,15 @@ pipeline {
                         script {
                             echo "Debug - Release Version: ${env.RELEASE_VERSION}"
                                 
-                            env.DEPLOYMENTS = kubectl.getResources([
+                            def deployments = kubectl.getResources([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}"
                             ])
 
-                            echo "Non filtered deployments are: ${env.DEPLOYMENTS}"
+                            echo "Non filtered deployments are: ${deployments}"
 
                             env.FILTERED_DEPLOYMENTS = kubectl.filterResourcesByIdentifier([
-                                resources: "${env.DEPLOYMENTS}", 
+                                resources: "${deployments}", 
                                 identifier: "${env.RELEASE_VERSION}"
                             ])
 

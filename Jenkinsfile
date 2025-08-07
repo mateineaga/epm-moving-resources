@@ -257,7 +257,7 @@ pipeline {
                                     returnStdout: true
                                 ).trim()
 
-                                echo "Identified image for ${deployment} is ${image}"
+                                echo "Identified image for deployment ${deployment} is ${image}"
 
                                 env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment([
                                     valuesFile: env.VALUES_FILE,

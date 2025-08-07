@@ -185,7 +185,7 @@ pipeline {
                             ])
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
 
-                            env.HPA_PATCH = kubectl.getPatchJsonResponseDeployment([
+                            env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
                                     valuesFile: env.VALUES_FILE
                             ])
 

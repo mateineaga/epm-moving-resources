@@ -28,11 +28,6 @@ pipeline {
 
 
     parameters {
-        choice(
-            name: 'ACTION',
-            choices: ['apply', 'revert'],
-            description: 'Choose action: apply changes or revert to previous state'
-        )
         booleanParam(name: 'DEPLOYMENT', defaultValue: true, description: 'Select if you want to apply the action on deployment')
         booleanParam(name: 'HPA', defaultValue: true, description: 'Select if you want to apply the action on HPA')
         choice(
@@ -67,24 +62,6 @@ pipeline {
     }
 
     stages{
-        stage('Initialize') {
-            steps {
-                script {
-                    env.SERVICE_REPOS = getServiceRepos()
-                }
-            }
-        }
-
-        stage('Checking parameters'){
-            steps{
-                echo "Banner is: ${BANNER}"
-                echo "Service name is: ${SERVICE_NAME}"
-                echo "Is release?: ${IS_RELEASE}"
-                echo "Source NS: ${env.SOURCE_NAMESPACE}"
-                echo "Target NS: ${env.TARGET_NAMESPACE}"
-            }
-        }
-
         stage('Validate Parameters') {
             steps {
                 script {
@@ -309,49 +286,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Reverting the resources to initial values.'){
-            when {
-                expression { params.ACTION == 'revert' }
-            }
-            parallel{
-                stage('Reverting the target deployment'){
-                    when {
-                        expression { params.DEPLOYMENT == true}
-                    }
-                    steps{
-                        script{
-                            kubectl.revertResource([
-                                namespace: env.TARGET_NAMESPACE,
-                                resourceName: env.FILTERED_DEPLOYMENTS.trim(),
-                                resourceType: 'deployment',
-                                jobName: env.JOB_NAME,
-                                backupPrefix: 'backup'
-                            ])
-                        }
-                    }
-                }
-
-                stage('Reverting the target hpa'){
-                    when {
-                        expression { params.HPA == true}
-                    }
-                    steps{
-                        script{
-                            kubectl.revertResource([
-                                namespace: env.TARGET_NAMESPACE,
-                                resourceName: env.FILTERED_HPA.trim(),
-                                resourceType: 'hpa',
-                                jobName: env.JOB_NAME,
-                                backupPrefix: 'backup-hpa'
-                            ])
-                        }
-                    }
-                }
-            }
-        }
-            
-        
 
         stage('Debug - Check Resources after') {
             parallel {

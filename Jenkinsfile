@@ -184,6 +184,12 @@ pipeline {
                                 identifier: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
                             ])
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
+
+                            env.HPA_PATCH = kubectl.getPatchJsonResponseDeployment([
+                                    valuesFile: env.VALUES_FILE
+                            ])
+
+                            echo "HPA Patch is ${env.HPA_PATCH}"
                         }
                     }
                 }

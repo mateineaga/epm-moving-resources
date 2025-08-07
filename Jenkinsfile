@@ -243,9 +243,15 @@ pipeline {
                     steps{
                         script{
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment -> 
+
+                                def image = sh("kubectl get deployment -n ${env.TARGET_NAMESPACE} ${deployment} -o=jsonpath={.spec.template.spec.containers[0].image}")
+
+                                echo "Identified image for ${deployment} is ${image}"
+
                                 env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment([
                                     valuesFile: env.VALUES_FILE,
-                                    deployment: deployment
+                                    deployment: deployment,
+                                    imageContainer: image
                                 ])
 
                                 echo "Generated patch for deployment ${deployment} with container name ${deployment.replaceAll('-dep-[0-9.-]+$', '')}"

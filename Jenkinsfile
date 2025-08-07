@@ -244,9 +244,12 @@ pipeline {
                         script{
                             env.FILTERED_DEPLOYMENTS.split('\n').each { deployment -> 
 
-                                def image = sh """ 
-                                kubectl get deployment -n ${env.TARGET_NAMESPACE} ${deployment} -o=jsonpath={.spec.template.spec.containers[0].image}
-                                """
+                                def image = sh(
+                                    script: """
+                                        kubectl get deployment -n ${env.TARGET_NAMESPACE} ${deployment} -o=jsonpath='{.spec.template.spec.containers[0].image}'
+                                    """,
+                                    returnStdout: true
+                                ).trim()
 
                                 echo "Identified image for ${deployment} is ${image}"
 

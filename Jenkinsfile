@@ -6,21 +6,40 @@ pipeline {
     agent {
         kubernetes {
             yaml '''
-            apiVersion: v1
-            kind: Pod
-            metadata:
-              labels:
-                jenkins: agent
-            spec:
-              containers:
-                - name: kubectl
-                  image: jenkins-slave:latest
-                  imagePullPolicy: IfNotPresent
-                  command:
-                  - cat
-                  tty: true
-              serviceAccountName: jenkins
-            '''
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: agent
+spec:
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers:
+      - 8.8.8.8
+      - 8.8.4.4
+    searches:
+      - jenkins.svc.cluster.local
+      - svc.cluster.local
+      - cluster.local
+    options:
+      - name: ndots
+        value: "5"
+  initContainers:
+    - name: init-dns
+      image: busybox:latest
+      command: ['sh', '-c', 'until nslookup github.com; do echo waiting for DNS; sleep 2; done;']
+  containers:
+    - name: kubectl
+      image: jenkins-slave:latest
+      imagePullPolicy: IfNotPresent
+      command:
+        - cat
+      tty: true
+      env:
+        - name: DOCKER_HOST
+          value: "tcp://localhost:2375"
+  serviceAccountName: jenkins
+'''
             defaultContainer 'kubectl'
             namespace 'jenkins'
         }
@@ -47,7 +66,7 @@ pipeline {
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['graphql', 'store', 'bloomreach', 'hybris' ], // graphql, store, bloomreach(authoring, delivery)
+            choices: ['bloomreach', 'graphql', 'store', 'hybris' ], // graphql, store, bloomreach(authoring, delivery)
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')

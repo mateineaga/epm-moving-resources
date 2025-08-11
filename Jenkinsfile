@@ -36,14 +36,6 @@ spec:
           value: "tcp://localhost:2375"
         - name: GIT_SSL_NO_VERIFY
           value: "true"
-      volumeMounts:
-        - name: resolv-conf
-          mountPath: /etc/resolv.conf
-          subPath: resolv.conf
-  volumes:
-    - name: resolv-conf
-      configMap:
-        name: custom-resolv-conf
   serviceAccountName: jenkins
 '''
             defaultContainer 'kubectl'

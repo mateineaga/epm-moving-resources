@@ -24,10 +24,6 @@ spec:
     options:
       - name: ndots
         value: "5"
-  initContainers:
-    - name: init-dns
-      image: busybox:latest
-      command: ['sh', '-c', 'until nslookup github.com; do echo waiting for DNS; sleep 2; done;']
   containers:
     - name: kubectl
       image: jenkins-slave:latest
@@ -38,6 +34,16 @@ spec:
       env:
         - name: DOCKER_HOST
           value: "tcp://localhost:2375"
+        - name: GIT_SSL_NO_VERIFY
+          value: "true"
+      volumeMounts:
+        - name: resolv-conf
+          mountPath: /etc/resolv.conf
+          subPath: resolv.conf
+  volumes:
+    - name: resolv-conf
+      configMap:
+        name: custom-resolv-conf
   serviceAccountName: jenkins
 '''
             defaultContainer 'kubectl'

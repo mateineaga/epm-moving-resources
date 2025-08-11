@@ -125,7 +125,7 @@ pipeline {
                             def deployments = kubectl.get([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}",
-                                options: "-o=jsonpath="{range .items[*]}{.metadata.name}{\\"\\n\\"}""
+                                options: '-o=jsonpath="{range .items[*]}{.metadata.name}\\n"'
                             ])
 
                             if (params.SERVICE_NAME == 'bloomreach') {
@@ -159,7 +159,7 @@ pipeline {
                             env.HPA = kubectl.get([
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}",
-                                options: '-o=jsonpath="{range .items[*]}{.metadata.name}{\\\"\\n\\\"}"'
+                                options: '-o=jsonpath="{range .items[*]}{.metadata.name}\\n"'
                             ])
 
                             if (params.SERVICE_NAME == 'bloomreach') {

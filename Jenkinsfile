@@ -50,7 +50,7 @@ spec:
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['bloomreach', 'graphql', 'store', 'hybris' ], 
+            choices: ['graphql', 'bloomreach', 'store', 'hybris' ], 
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -270,16 +270,20 @@ spec:
 
                                 echo "Generated patch for deployment ${deployment} with container name ${deployment.replaceAll('-dep-[0-9.-]+$', '')}"
 
-                                def patchFile = "patch-${deployment}.json"
-                                writeFile file: patchFile, text: env.DEP_PATCH
-                                echo "Written patch to file: ${patchFile}"
+                                if (env.DEP_PATCH) {
+                                    def patchFile = "patch-${deployment}.json"
+                                    writeFile file: patchFile, text: env.DEP_PATCH
+                                    echo "Written patch to file: ${patchFile}"
 
-                                kubectl.patchUpdateFile([
-                                    namespace: env.TARGET_NAMESPACE,
-                                    resourceName: deployment,
-                                    resourceType: 'deployment',
-                                    patchFile: patchFile
-                                ])
+                                    kubectl.patchUpdateFile([
+                                        namespace: env.TARGET_NAMESPACE,
+                                        resourceName: deployment,
+                                        resourceType: 'deployment',
+                                        patchFile: patchFile
+                                    ])
+                                } else {
+                                    echo "Skipping patch for ${deployment} - no valid resources configuration available"
+                                }
                             }
                         }
                     }

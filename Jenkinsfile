@@ -128,7 +128,7 @@ spec:
                             def deployments = kubectl.get([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}",
-                                options: '-o=jsonpath="{range .items[*]}{.metadata.name}\\n"'
+                                options: "--no-headers -o=custom-columns=NAME:.metadata.name"
                             ])
 
                             if (params.SERVICE_NAME == 'bloomreach') {
@@ -165,7 +165,7 @@ spec:
                             env.HPA = kubectl.get([
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}",
-                                options: '-o=jsonpath="{range .items[*]}{.metadata.name}\\n"'
+                                options: "--no-headers -o=custom-columns=NAME:.metadata.name"
                             ])
 
                             if (params.SERVICE_NAME == 'bloomreach') {

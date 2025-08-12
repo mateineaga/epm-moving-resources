@@ -40,12 +40,12 @@ spec:
         )
         choice(
             name: 'SOURCE_ENV',
-            choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'perf', 'prod'],
+            choices: ['dev1', 'dev2', 'dev3', 'qa1', 'qa2', 'qa3', 'uat', 'perf', 'prod'],
             description: 'Select environment'
         )
         choice(
             name: 'TARGET_ENV',
-            choices: ['qa1', 'dev1', 'dev2', 'dev3', 'qa2', 'qa3', 'perf'],
+            choices: ['qa1', 'dev1', 'dev2', 'dev3', 'qa2', 'qa3', 'uat', 'perf'],
             description: 'Select target environment'
         )
         choice(
@@ -285,7 +285,7 @@ spec:
 
                 stage('Patching the target hpa!') {
                     when {
-                        expression { params.ACTION == 'apply' && params.HPA == true }
+                        expression { params.HPA == true }
                     }
                     steps {
                         script {
@@ -293,7 +293,7 @@ spec:
                             env.FILTERED_HPA.split('\n').each { hpa -> 
                                 env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
                                     valuesFile: env.VALUES_FILE,
-                                    resourceName: hpa  // Adăugat acest parametru
+                                    resourceName: hpa 
                                 ])
 
                                 if (env.HPA_PATCH) {

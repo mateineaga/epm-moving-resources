@@ -12,18 +12,6 @@ metadata:
   labels:
     jenkins: agent
 spec:
-  dnsPolicy: "None"
-  dnsConfig:
-    nameservers:
-      - 8.8.8.8
-      - 8.8.4.4
-    searches:
-      - jenkins.svc.cluster.local
-      - svc.cluster.local
-      - cluster.local
-    options:
-      - name: ndots
-        value: "5"
   containers:
     - name: kubectl
       image: jenkins-slave:latest
@@ -32,8 +20,6 @@ spec:
         - cat
       tty: true
       env:
-        - name: DOCKER_HOST
-          value: "tcp://localhost:2375"
         - name: GIT_SSL_NO_VERIFY
           value: "true"
   serviceAccountName: jenkins

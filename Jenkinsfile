@@ -230,8 +230,7 @@ spec:
                             env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
                                 def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: deployment,
-                                    resourceType: 'deployment',
+                                    resources: "deployment/${deployment}",
                                     options: "-o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'"
                                 ])
                                 echo "Resources before patch for target deployment ${deployment}: ${response}"
@@ -252,8 +251,7 @@ spec:
                             env.FILTERED_HPA.split('\n').each{hpa ->
                                 def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: hpa,
-                                    resourceType: 'hpa',
+                                    resources: "hpa/${hpa}",
                                     options: "-o=jsonpath='{.spec}' | jq '.'"
                                 ])
                                 echo "Resources before patch for target hpa ${hpa}: ${response}"
@@ -359,8 +357,7 @@ spec:
                             env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
                                 def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: deployment,
-                                    resourceType: 'deployment',
+                                    resources: "deployment/${deployment}",
                                     options: "-o=jsonpath='{.spec.template.spec.containers[0].resources}' | jq '.'"
                                 ])
                                 echo "Resources AFTER patch for target deployment ${deployment}: ${response}"
@@ -381,8 +378,7 @@ spec:
                             env.FILTERED_HPA.split('\n').each{hpa ->
                                 def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
-                                    resourceName: hpa,
-                                    resourceType: 'hpa',
+                                    resources: "hpa/${hpa}",
                                     options: "-o=jsonpath='{.spec}' | jq '.'"
                                 ])
                                 echo "Resources AFTER patch for target hpa ${hpa}: ${response}"

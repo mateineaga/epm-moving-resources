@@ -170,20 +170,43 @@ spec:
                             ])
 
                             if (params.SERVICE_NAME == 'bloomreach') {
-                                def authoringHPA = kubectl.filterResourcesByIdentifier([
+                                def authoringHPA_scaled = kubectl.filterResourcesByIdentifier([
                                     resources: "${env.HPA}", 
                                     identifier: "bloomreach-authoring-scaledobject-${env.RELEASE_VERSION}"
                                 ])
-                                def deliveryHPA = kubectl.filterResourcesByIdentifier([
+                                def deliveryHPA_scaled = kubectl.filterResourcesByIdentifier([
                                     resources: "${env.HPA}", 
                                     identifier: "bloomreach-delivery-scaledobject-${env.RELEASE_VERSION}"
                                 ])
-                                env.FILTERED_HPA = [authoringHPA, deliveryHPA].findAll { it }.join('\n')
-                            } else {
-                                env.FILTERED_HPA = kubectl.filterResourcesByIdentifier([
+                                def authoringHPA = kubectl.filterResourcesByIdentifier([
                                     resources: "${env.HPA}", 
-                                    identifier: "${env.SERVICE_NAME}-${env.RELEASE_VERSION}"
+                                    identifier: "bloomreach-authoring-hpa-${env.RELEASE_VERSION}"
                                 ])
+                                def deliveryHPA = kubectl.filterResourcesByIdentifier([
+                                    resources: "${env.HPA}", 
+                                    identifier: "bloomreach-delivery-hpa-${env.RELEASE_VERSION}"
+                                ])
+                                env.FILTERED_HPA = [authoringHPA_scaled, deliveryHPA_scaled, authoringHPA, deliveryHPA].findAll { it }.join('\n')
+                            } else {
+                                // Pentru toate celelalte servicii
+                                def hpaPatterns = [
+                                    "${env.SERVICE_NAME}-${env.RELEASE_VERSION}",                    // servicename-rv
+                                    "${env.SERVICE_NAME}-hpa-${env.RELEASE_VERSION}",               // servicename-hpa-rv
+                                    "${env.SERVICE_NAME}-dashboard-hpa-${env.RELEASE_VERSION}"      // servicename-dashboard-hpa-rv
+                                ]
+
+                                def allHPAs = []
+                                hpaPatterns.each { pattern ->
+                                    def found = kubectl.filterResourcesByIdentifier([
+                                        resources: "${env.HPA}",
+                                        identifier: pattern
+                                    ])
+                                    if (found) {
+                                        allHPAs.add(found)
+                                    }
+                                }
+
+                                env.FILTERED_HPA = allHPAs.join('\n')
                             }
 
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"

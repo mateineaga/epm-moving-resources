@@ -192,7 +192,8 @@ spec:
                                 def hpaPatterns = [
                                     "${env.SERVICE_NAME}-${env.RELEASE_VERSION}",                    // servicename-rv
                                     "${env.SERVICE_NAME}-hpa-${env.RELEASE_VERSION}",               // servicename-hpa-rv
-                                    "${env.SERVICE_NAME}-dashboard-hpa-${env.RELEASE_VERSION}"      // servicename-dashboard-hpa-rv
+                                    "${env.SERVICE_NAME}-dashboard-hpa-${env.RELEASE_VERSION}",
+                                    "${env.SERVICE_NAME}-scaledobject-${env.RELEASE_VERSION}"      // servicename-dashboard-hpa-rv
                                 ]
 
                                 def allHPAs = []

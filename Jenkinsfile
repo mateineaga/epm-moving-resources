@@ -186,12 +186,6 @@ spec:
                             }
 
                             echo "Filtered target HPA are: ${env.FILTERED_HPA}"
-
-                            env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
-                                valuesFile: env.VALUES_FILE
-                            ])
-
-                            echo "HPA Patch is ${env.HPA_PATCH}"
                         }
                     }
                 }
@@ -289,16 +283,17 @@ spec:
                 }
             
 
-                stage('Patching the target hpa!'){
+                stage('Patching the target hpa!') {
                     when {
-                        expression { params.ACTION == 'apply' && params.HPA == true}
+                        expression { params.ACTION == 'apply' && params.HPA == true }
                     }
-                    steps{
-                        script{
-                            env.FILTERED_HPA.split('\n').each { hpa ->
+                    steps {
+                        script {
+                            echo "Patching HPA"
+                            env.FILTERED_HPA.split('\n').each { hpa -> 
                                 env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
                                     valuesFile: env.VALUES_FILE,
-                                    resourceName: hpa
+                                    resourceName: hpa  // Adăugat acest parametru
                                 ])
 
                                 if (env.HPA_PATCH) {
@@ -307,7 +302,7 @@ spec:
                                     echo "Patch file for ${hpa}: ${patchFile}"
 
                                     kubectl.patchUpdateFile([
-                                        namespace: env.TARGET_NAMESPACE,
+                                        namespace: "${env.TARGET_NAMESPACE}",
                                         resourceName: hpa,
                                         resourceType: 'hpa',
                                         patchFile: patchFile

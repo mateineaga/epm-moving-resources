@@ -50,7 +50,7 @@ spec:
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['graphql', 'bloomreach', 'store', 'hybris' ], 
+            choices: ['graphql', 'bloomreach', 'store' ], 
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -108,7 +108,7 @@ spec:
         stage('Get Release Version') {
             steps {
                 script {
-                    env.RELEASE_VERSION = kubectl.getReleaseVersion([
+                    env.RELEASE_VERSION = kubectl.getResourceReleaseVersion([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
                         release: params.IS_RELEASE
@@ -128,7 +128,7 @@ spec:
                     }
                     steps {
                         script {
-                            def deployments = kubectl.get([
+                            def deployments = kubectl.getResource([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 options: "--no-headers -o=custom-columns=NAME:.metadata.name"
@@ -165,7 +165,7 @@ spec:
                     }
                     steps {
                         script {
-                            env.HPA = kubectl.get([
+                            env.HPA = kubectl.getResource([
                                 resources: 'hpa', 
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 options: "--no-headers -o=custom-columns=NAME:.metadata.name"
@@ -206,7 +206,7 @@ spec:
                             echo "=== RESOURCES BEFORE APPLY/PATCH - DEPLOYMENTS ==="
                             
                             env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
-                                def response = kubectl.checkResources([
+                                def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
                                     resourceType: 'deployment',
@@ -228,7 +228,7 @@ spec:
                             echo "=== RESOURCES BEFORE APPLY/PATCH - HPA ==="
 
                             env.FILTERED_HPA.split('\n').each{hpa ->
-                                def response = kubectl.checkResources([
+                                def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: hpa,
                                     resourceType: 'hpa',
@@ -262,7 +262,7 @@ spec:
 
                                 echo "Identified image for deployment ${deployment} is ${image}"
 
-                                env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment([
+                                env.DEP_PATCH = kubectl.getResourcePatchJsonResponseDeployment([
                                     valuesFile: env.VALUES_FILE,
                                     deployment: deployment,
                                     imageContainer: image
@@ -298,7 +298,7 @@ spec:
                         script {
                             echo "Patching HPA"
                             env.FILTERED_HPA.split('\n').each { hpa -> 
-                                env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
+                                env.HPA_PATCH = kubectl.getResourceHPAPatchJsonResponse([
                                     valuesFile: env.VALUES_FILE,
                                     resourceName: hpa 
                                 ])
@@ -335,7 +335,7 @@ spec:
                             echo "=== RESOURCES AFTER APPLY/PATCH - DEPLOYMENTS ==="
                             
                             env.FILTERED_DEPLOYMENTS.split('\n').each{deployment ->
-                                def response = kubectl.checkResources([
+                                def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: deployment,
                                     resourceType: 'deployment',
@@ -357,7 +357,7 @@ spec:
                             echo "=== RESOURCES AFTER APPLY/PATCH - HPA ==="
 
                             env.FILTERED_HPA.split('\n').each{hpa ->
-                                def response = kubectl.checkResources([
+                                def response = kubectl.getResource([
                                     namespace: "${env.TARGET_NAMESPACE}",
                                     resourceName: hpa,
                                     resourceType: 'hpa',

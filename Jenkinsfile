@@ -108,7 +108,7 @@ spec:
         stage('Get Release Version') {
             steps {
                 script {
-                    env.RELEASE_VERSION = kubectl.getResourceReleaseVersion([
+                    env.RELEASE_VERSION = kubectl.getReleaseVersion([
                         namespace: "${SOURCE_NAMESPACE}",
                         resourceName: "${SERVICE_NAME}",
                         release: params.IS_RELEASE

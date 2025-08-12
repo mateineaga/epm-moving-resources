@@ -117,8 +117,6 @@ spec:
                 }
             }
         }
-
-
         
         stage('Preparing patch') {
             parallel {
@@ -262,7 +260,7 @@ spec:
 
                                 echo "Identified image for deployment ${deployment} is ${image}"
 
-                                env.DEP_PATCH = kubectl.getResourcePatchJsonResponseDeployment([
+                                env.DEP_PATCH = kubectl.getPatchJsonResponseDeployment([
                                     valuesFile: env.VALUES_FILE,
                                     deployment: deployment,
                                     imageContainer: image
@@ -298,7 +296,7 @@ spec:
                         script {
                             echo "Patching HPA"
                             env.FILTERED_HPA.split('\n').each { hpa -> 
-                                env.HPA_PATCH = kubectl.getResourceHPAPatchJsonResponse([
+                                env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
                                     valuesFile: env.VALUES_FILE,
                                     resourceName: hpa 
                                 ])

@@ -50,7 +50,7 @@ spec:
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['bloomreach', 'graphql', 'store', 'hybris' ], // graphql, store, bloomreach(authoring, delivery)
+            choices: ['bloomreach', 'graphql', 'store', 'hybris' ], 
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -69,8 +69,8 @@ spec:
                     if (params.SOURCE_ENV == params.TARGET_ENV) {
                         error "Source and Target environments cannot be the same!"
                     }
-                    if (params.SOURCE_ENV == 'perf' && params.BANNER != 'dll') {
-                        error "Performance environment exists only in 'dll' banner! "
+                    if ((params.SOURCE_ENV == 'perf' || params.TARGET_ENV == 'perf') && params.BANNER != 'dll') {
+                        error "Performance environment can only be used with 'dll' banner! Current banner is '${params.BANNER}'"
                     }
                 }
             }

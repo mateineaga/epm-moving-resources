@@ -69,6 +69,9 @@ spec:
                     if (params.SOURCE_ENV == params.TARGET_ENV) {
                         error "Source and Target environments cannot be the same!"
                     }
+                    if (params.SOURCE_ENV == 'prod' && params.BANNER != 'dll') {
+                        error "Prod environment exists only in 'dll' environment! "
+                    }
                 }
             }
         }

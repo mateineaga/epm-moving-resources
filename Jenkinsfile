@@ -291,24 +291,30 @@ spec:
 
                 stage('Patching the target hpa!'){
                     when {
-                        expression { params.HPA == true}
+                        expression { params.ACTION == 'apply' && params.HPA == true}
                     }
                     steps{
                         script{
-                            echo "Patching HPA"
-                            def patchFile = "patch-hpa.json"
-                            
-                            writeFile file: patchFile, text: env.HPA_PATCH
-
-                            echo "Patch file: ${patchFile}"
-
-                            env.FILTERED_HPA.split('\n').each{hpa -> 
-                                kubectl.patchUpdateFile([
-                                namespace: "${env.TARGET_NAMESPACE}",
-                                resourceName: hpa,
-                                resourceType: 'hpa',
-                                patchFile: patchFile
+                            env.FILTERED_HPA.split('\n').each { hpa ->
+                                env.HPA_PATCH = kubectl.getHPAPatchJsonResponse([
+                                    valuesFile: env.VALUES_FILE,
+                                    resourceName: hpa
                                 ])
+
+                                if (env.HPA_PATCH) {
+                                    def patchFile = "patch-${hpa}.json"
+                                    writeFile file: patchFile, text: env.HPA_PATCH
+                                    echo "Patch file for ${hpa}: ${patchFile}"
+
+                                    kubectl.patchUpdateFile([
+                                        namespace: env.TARGET_NAMESPACE,
+                                        resourceName: hpa,
+                                        resourceType: 'hpa',
+                                        patchFile: patchFile
+                                    ])
+                                } else {
+                                    echo "Skipping HPA patch for ${hpa} - no configuration available"
+                                }
                             }
                         }
                     }

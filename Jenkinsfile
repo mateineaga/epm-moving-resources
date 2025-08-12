@@ -154,7 +154,10 @@ spec:
                                     resources: "${deployments}", 
                                     identifier: "bloomreach-delivery-dep-${env.RELEASE_VERSION}"
                                 ])
-                                env.FILTERED_DEPLOYMENTS = [authoringDeployments, deliveryDeployments].findAll { it }.join('\n')
+                                env.FILTERED_DEPLOYMENTS = [authoringDeployments, deliveryDeployments]
+                                    .findAll { it != "" }  
+                                    .join('\n')
+                                    .trim()  
                             } else {
                                 env.FILTERED_DEPLOYMENTS = kubectl.filterResourcesByIdentifier([
                                     resources: "${deployments}", 

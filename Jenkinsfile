@@ -50,7 +50,7 @@ spec:
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['graphql', 'bloomreach', 'store'], 
+            choices: ['store', 'graphql', 'bloomreach'], 
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -385,7 +385,7 @@ spec:
                     when {
                         expression { params.HPA == true }
                     }
-                    steps {;p[]
+                    steps {
                         script {
                             echo "=== RESOURCES AFTER APPLY/PATCH - HPA ==="
 

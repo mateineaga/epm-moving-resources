@@ -50,7 +50,7 @@ spec:
         )
         choice(
             name: 'SERVICE_NAME',
-            choices: ['graphql', 'bloomreach', 'store' ], 
+            choices: ['graphql', 'bloomreach', 'store'], 
             description: 'Select the name of the service in which you want to modify resources'
         )
         booleanParam(name: 'IS_RELEASE', defaultValue: true, description: 'Choose true if you desire the "release" or "candidate" service')
@@ -126,33 +126,53 @@ spec:
                     }
                     steps {
                         script {
-                            def deployments = kubectl.getResource([
+                            env.DEPLOYMENTS = kubectl.getResource([
                                 resources: 'deployments', 
                                 namespace: "${env.TARGET_NAMESPACE}",
                                 options: "--no-headers -o=custom-columns=NAME:.metadata.name"
                             ])
 
-                            if (params.SERVICE_NAME == 'bloomreach') {
-                                def authoringDeployments = kubectl.filterResourcesByIdentifier([
-                                    resources: "${deployments}", 
-                                    identifier: "bloomreach-authoring-dep-${env.RELEASE_VERSION}"
-                                ])
-                                def deliveryDeployments = kubectl.filterResourcesByIdentifier([
-                                    resources: "${deployments}", 
-                                    identifier: "bloomreach-delivery-dep-${env.RELEASE_VERSION}"
-                                ])
-                                env.FILTERED_DEPLOYMENTS = [authoringDeployments, deliveryDeployments]
-                                    .findAll { it != "" }  
-                                    .join('\n')
-                                    .trim()  
-                            } else {
-                                env.FILTERED_DEPLOYMENTS = kubectl.filterResourcesByIdentifier([
-                                    resources: "${deployments}", 
-                                    identifier: "${env.SERVICE_NAME}-dep-${env.RELEASE_VERSION}"
-                                ])
+                            // Definește pattern-urile pentru toate tipurile posibile de deployment-uri
+                            def deploymentPatterns = []
+                            
+                            // Pattern-uri de bază
+                            deploymentPatterns.add("${env.SERVICE_NAME}-dep-${env.RELEASE_VERSION}")
+                            deploymentPatterns.add("${env.SERVICE_NAME}-dashboard-dep-${env.RELEASE_VERSION}")
+
+                            if (params.SERVICE_NAME == 'store') {
+                                deploymentPatterns.add("instore-wms-${env.RELEASE_VERSION}")
                             }
                             
-                            echo "Filtered deployments: ${env.FILTERED_DEPLOYMENTS}"
+                            // Pattern-uri specifice pentru bloomreach (vor fi ignorate pentru alte servicii)
+                            if (params.SERVICE_NAME == 'bloomreach') {
+                                deploymentPatterns.add("${env.SERVICE_NAME}-authoring-dep-${env.RELEASE_VERSION}")
+                                deploymentPatterns.add("${env.SERVICE_NAME}-delivery-dep-${env.RELEASE_VERSION}")
+                            }
+
+                            def allDeployments = []
+                            deploymentPatterns.each { pattern ->
+                                def found = kubectl.filterResourcesByIdentifier([
+                                    resources: "${env.DEPLOYMENTS}",
+                                    identifier: pattern
+                                ])
+                                if (found) {
+                                    allDeployments.add(found)
+                                }
+                            }
+
+                            env.FILTERED_DEPLOYMENTS = allDeployments
+                                .findAll { it != "" }
+                                .join('\n')
+                                .trim()
+                            
+                            if (!env.FILTERED_DEPLOYMENTS) {
+                                echo "Warning: No deployments found matching patterns for ${env.SERVICE_NAME}"
+                            } else {
+                                echo "Found deployments:"
+                                env.FILTERED_DEPLOYMENTS.split('\n').each { deployment ->
+                                    echo "- ${deployment}"
+                                }
+                            }
                         }
                     }
                 }
@@ -169,48 +189,42 @@ spec:
                                 options: "--no-headers -o=custom-columns=NAME:.metadata.name"
                             ])
 
+                            def hpaPatterns = []
+
                             if (params.SERVICE_NAME == 'bloomreach') {
-                                def authoringHPA_scaled = kubectl.filterResourcesByIdentifier([
-                                    resources: "${env.HPA}", 
-                                    identifier: "bloomreach-authoring-scaledobject-${env.RELEASE_VERSION}"
+                                hpaPatterns.addAll([
+                                    "bloomreach-authoring-scaledobject-${env.RELEASE_VERSION}",
+                                    "bloomreach-delivery-scaledobject-${env.RELEASE_VERSION}",
+                                    "bloomreach-authoring-hpa-${env.RELEASE_VERSION}",
+                                    "bloomreach-delivery-hpa-${env.RELEASE_VERSION}"
                                 ])
-                                def deliveryHPA_scaled = kubectl.filterResourcesByIdentifier([
-                                    resources: "${env.HPA}", 
-                                    identifier: "bloomreach-delivery-scaledobject-${env.RELEASE_VERSION}"
-                                ])
-                                def authoringHPA = kubectl.filterResourcesByIdentifier([
-                                    resources: "${env.HPA}", 
-                                    identifier: "bloomreach-authoring-hpa-${env.RELEASE_VERSION}"
-                                ])
-                                def deliveryHPA = kubectl.filterResourcesByIdentifier([
-                                    resources: "${env.HPA}", 
-                                    identifier: "bloomreach-delivery-hpa-${env.RELEASE_VERSION}"
-                                ])
-                                env.FILTERED_HPA = [authoringHPA_scaled, deliveryHPA_scaled, authoringHPA, deliveryHPA].findAll { it }.join('\n')
                             } else {
-                                // Pentru toate celelalte servicii
-                                def hpaPatterns = [
-                                    "${env.SERVICE_NAME}-${env.RELEASE_VERSION}",                    // servicename-rv
-                                    "${env.SERVICE_NAME}-hpa-${env.RELEASE_VERSION}",               // servicename-hpa-rv
+                                hpaPatterns.addAll([
+                                    "${env.SERVICE_NAME}-${env.RELEASE_VERSION}",
+                                    "${env.SERVICE_NAME}-hpa-${env.RELEASE_VERSION}",
                                     "${env.SERVICE_NAME}-dashboard-hpa-${env.RELEASE_VERSION}",
-                                    "${env.SERVICE_NAME}-scaledobject-${env.RELEASE_VERSION}"      // servicename-dashboard-hpa-rv
-                                ]
-
-                                def allHPAs = []
-                                hpaPatterns.each { pattern ->
-                                    def found = kubectl.filterResourcesByIdentifier([
-                                        resources: "${env.HPA}",
-                                        identifier: pattern
-                                    ])
-                                    if (found) {
-                                        allHPAs.add(found)
-                                    }
-                                }
-
-                                env.FILTERED_HPA = allHPAs.join('\n')
+                                    "${env.SERVICE_NAME}-dashboard-${env.RELEASE_VERSION}",
+                                    "${env.SERVICE_NAME}-scaledobject-${env.RELEASE_VERSION}"
+                                ])
                             }
 
-                            echo "Filtered target HPA are: ${env.FILTERED_HPA}"
+                            def allHPAs = []
+                            hpaPatterns.each { pattern ->
+                                def found = kubectl.filterResourcesByIdentifier([
+                                    resources: "${env.HPA}",
+                                    identifier: pattern
+                                ])
+                                if (found) {
+                                    allHPAs.add(found)
+                                }
+                            }
+
+                            env.FILTERED_HPA = allHPAs
+                                .findAll { it != "" }
+                                .join('\n')
+                                .trim()
+
+                            echo "Found HPAs: ${env.FILTERED_HPA}"
                         }
                     }
                 }
@@ -371,7 +385,7 @@ spec:
                     when {
                         expression { params.HPA == true }
                     }
-                    steps {
+                    steps {;p[]
                         script {
                             echo "=== RESOURCES AFTER APPLY/PATCH - HPA ==="
 
